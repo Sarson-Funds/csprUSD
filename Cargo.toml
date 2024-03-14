@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "csprusd",
+    "csprusd-test-contract",
+    "tests",
+]
+default-members = [
+    "csprusd",
+    "csprusd-test-contract",
+    "tests",
+]
+
+[profile.release]
+codegen-units = 1
+lto = true

@@ -1,0 +1,16 @@
+[package]
+name = "csprusd-test-contract"
+version = "1.0.0"
+authors = ["Michał Papierski <michal@casperlabs.io>", "Kovacs Boldizsar"]
+edition = "2018"
+
+[[bin]]
+name = "csprusd_test_contract"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+casper-contract = "2.0.0"
+casper-types = "2.0.0"

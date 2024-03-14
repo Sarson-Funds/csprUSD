@@ -1,0 +1,27 @@
+[package]
+name = "csprusd"
+version = "1.0.0"
+edition = "2018"
+authors = ["Kovacs Boldizsar"]
+description = "Casper USD fungible token implementation"
+readme = "README.md"
+documentation = "https://docs.rs/casper-csprusd"
+homepage = "https://casperlabs.io"
+repository = "https://github.com/casper-ecosystem/csprusd"
+license-file = "../LICENSE"
+
+[[bin]]
+name = "csprusd"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+base64 = { version = "0.20.0", default-features = false, features = ["alloc"] }
+casper-contract = "2.0.0"
+casper-types = "2.0.0"
+hex = { version = "0.4.3", default-features = false }
+once_cell = { version = "1.16.0", default-features = false }
+casper-event-standard = { version = "0.3.0", default-features = false }
+getrandom = { version = "0.2", features = ["js"] }
