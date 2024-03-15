@@ -82,6 +82,7 @@ pub const METHOD_BURN: &str = "burn";
 pub const DECREASE_ALLOWANCE: &str = "decrease_allowance";
 pub const INCREASE_ALLOWANCE: &str = "increase_allowance";
 pub const METHOD_TRANSFER_OWNERSHIP: &str = "transfer_ownership";
+pub const UPDATE_BLACKLISTER_ENTRY_POINT: &str = "update_blacklister";
 
 pub const IS_PAUSED: &str = "is_paused";
 pub const PAUSER: &str = "pauser";

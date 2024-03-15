@@ -92,7 +92,7 @@ pub extern "C" fn master_minter() {
 
 #[no_mangle]
 pub extern "C" fn blacklister() {
-    runtime::ret(CLValue::from_t(utils::read_from::<Key>(BLACKLISTER)).unwrap_or_revert());
+    runtime::ret(CLValue::from_t(utils::read_from::<PublicKey>(BLACKLISTER)).unwrap_or_revert());
 }
 
 #[no_mangle]
@@ -176,8 +176,8 @@ pub extern "C" fn un_blacklist() {
 pub extern "C" fn update_blacklister() {
     only_owner();
 
-    let new_blacklister: Key = runtime::get_named_arg(NEW);
-    storage::write(get_uref(BLACKLISTER), new_blacklister);
+    let new_blacklister: PublicKey = runtime::get_named_arg(NEW);
+    storage::write(get_uref(BLACKLISTER), new_blacklister.clone());
 
     events::emit_event(Event::BlacklisterChanged(BlacklisterChanged {
         new_blacklister,

@@ -3,7 +3,7 @@ use alloc::{string::String, vec, vec::Vec};
 
 use casper_types::{
     account::AccountHash, CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType,
-    EntryPoints, Key, Parameter, U256,
+    EntryPoints, Key, Parameter, PublicKey, U256,
 };
 
 use crate::constants::{
@@ -88,7 +88,7 @@ pub fn blacklister() -> EntryPoint {
     EntryPoint::new(
         String::from(BLACKLISTER_ENTRY_POINT_NAME),
         Vec::new(),
-        AccountHash::cl_type(),
+        PublicKey::cl_type(),
         EntryPointAccess::Public,
         EntryPointType::Contract,
     )

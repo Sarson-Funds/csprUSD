@@ -1,4 +1,4 @@
-use casper_types::{Key, U256};
+use casper_types::{Key, PublicKey, U256};
 
 use casper_event_standard::{emit, Event, Schemas};
 
@@ -58,7 +58,7 @@ pub struct UnBlacklisted {
 
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct BlacklisterChanged {
-    pub new_blacklister: Key,
+    pub new_blacklister: PublicKey,
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]

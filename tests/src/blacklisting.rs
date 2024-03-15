@@ -1,8 +1,9 @@
 use crate::utility::{
     constants::{
-        ACCOUNT_1_ADDR, ACCOUNT_2_ADDR, AMOUNT, BLACKLIST, BLACKLISTED, BLACKLISTED_ACCOUNT,
-        CONFIGURE_MINTER_ENTRY_POINT_NAME, KEY, METHOD_MINT, MINTER, MINTER_ALLOWED,
-        NON_BLACKLISTER, RECIPIENT, TOKEN_OWNER_AMOUNT_1, UN_BLACKLIST,
+        ACCOUNT_1_ADDR, ACCOUNT_2_ADDR, ACCOUNT_2_PUBLIC_KEY, AMOUNT, BLACKLIST, BLACKLISTED,
+        BLACKLISTED_ACCOUNT, CONFIGURE_MINTER_ENTRY_POINT_NAME, KEY, METHOD_MINT, MINTER,
+        MINTER_ALLOWED, NEW, NON_BLACKLISTER, RECIPIENT, TOKEN_OWNER_AMOUNT_1, UN_BLACKLIST,
+        UPDATE_BLACKLISTER_ENTRY_POINT,
     },
     installer_request_builders::{csprusd_check_balance_of, setup, TestContext},
 };
@@ -167,4 +168,17 @@ fn test_blacklisting() {
         blacklisted.get(0).unwrap().to_bytes(),
         account_1_key.to_bytes()
     );
+
+    // update blacklister
+    let update_blacklister_to_acc_2 = ExecuteRequestBuilder::contract_call_by_hash(
+        *ACCOUNT_1_ADDR,
+        csprusd_token,
+        UPDATE_BLACKLISTER_ENTRY_POINT,
+        runtime_args! {NEW => ACCOUNT_2_PUBLIC_KEY.clone()},
+    )
+    .build();
+    builder
+        .exec(update_blacklister_to_acc_2)
+        .expect_success()
+        .commit();
 }
