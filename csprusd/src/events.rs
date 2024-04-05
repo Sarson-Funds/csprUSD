@@ -48,12 +48,12 @@ pub struct NewPauser {
 
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct Blacklisted {
-    pub account: Key,
+    pub account: PublicKey,
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct UnBlacklisted {
-    pub account: Key,
+    pub account: PublicKey,
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
@@ -146,7 +146,16 @@ pub fn init_events() {
     let schemas = Schemas::new()
         .with::<Mint>()
         .with::<Burn>()
+        .with::<Pause>()
+        .with::<Unpause>()
         .with::<NewPauser>()
+        .with::<MasterMinterChanged>()
+        .with::<Blacklisted>()
+        .with::<UnBlacklisted>()
+        .with::<BlacklisterChanged>()
+        .with::<OwnershipTransferred>()
+        .with::<MinterConfigured>()
+        .with::<MinterRemoved>()
         .with::<SetAllowance>()
         .with::<IncreaseAllowance>()
         .with::<DecreaseAllowance>()

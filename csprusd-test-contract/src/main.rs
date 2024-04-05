@@ -43,7 +43,7 @@ const TOTAL_SUPPLY_ENTRY_POINT_NAME: &str = "total_supply";
 const BALANCE_OF_ENTRY_POINT_NAME: &str = "balance_of";
 const TRANSFER_ENTRY_POINT_NAME: &str = "transfer";
 const TRANSFER_FROM_ENTRY_POINT_NAME: &str = "transfer_from";
-const KEY: &str = "key";
+const ADDRESS: &str = "address";
 
 fn store_result<T: CLTyped + ToBytes>(result: T) {
     match runtime::get_key(RESULT_KEY) {
@@ -78,10 +78,10 @@ extern "C" fn check_balance_of() {
             .into_hash()
             .unwrap_or_revert(),
     );
-    let address: Key = runtime::get_named_arg(KEY);
+    let address: Key = runtime::get_named_arg(ADDRESS);
 
     let balance_args = runtime_args! {
-        KEY => address,
+        ADDRESS => address,
     };
 
     let result: U256 =

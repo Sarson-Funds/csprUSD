@@ -1,12 +1,6 @@
 use alloc::string::String;
 
-use casper_contract::{
-    contract_api::{
-        runtime::{self},
-        storage,
-    },
-    unwrap_or_revert::UnwrapOrRevert,
-};
+use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
 use casper_types::{bytesrepr::ToBytes, Key, URef, U256};
 
 use crate::{constants::BALANCES, error::CsprUSDError, utils};
@@ -14,9 +8,17 @@ use crate::{constants::BALANCES, error::CsprUSDError, utils};
 /// Creates a dictionary item key for (owner)
 #[inline]
 fn make_dictionary_item_key(owner: Key) -> String {
+    // let preimage = owner.to_bytes().unwrap_or_revert();
+    // let key_bytes = runtime::blake2b(preimage);
+    // hex::encode(key_bytes)
     let preimage = owner.to_bytes().unwrap_or_revert();
-    let key_bytes = runtime::blake2b(preimage);
-    hex::encode(key_bytes)
+    // NOTE: As for now dictionary item keys are limited to 64 characters only. Instead of using
+    // hashing (which will effectively hash a hash) we'll use base64. Preimage is 33 bytes for
+    // both used Key variants, and approximated base64-encoded length will be 4 * (33 / 3) ~ 44
+    // characters.
+    // Even if the preimage increased in size we still have extra space but even in case of much
+    // larger preimage we can switch to base85 which has ratio of 4:5.
+    base64::encode(preimage)
 }
 
 /// Getter for the "balances" dictionary URef.

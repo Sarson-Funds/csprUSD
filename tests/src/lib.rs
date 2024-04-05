@@ -3,6 +3,8 @@ mod allowance;
 #[cfg(test)]
 mod blacklisting;
 #[cfg(test)]
+mod contract_upgrade;
+#[cfg(test)]
 mod install;
 #[cfg(test)]
 mod master_minter;

@@ -48,6 +48,7 @@ pub const CHECK_BALANCE_OF_ENTRYPOINT: &str = "check_balance_of";
 pub const CHECK_ALLOWANCE_OF_ENTRYPOINT: &str = "check_allowance_of";
 pub const ARG_TOKEN_CONTRACT: &str = "token_contract";
 pub const KEY: &str = "key";
+pub const ADDRESS: &str = "address";
 pub const RESULT_KEY: &str = "result";
 pub const TEST_CONTRACT_PACKAGE_HASH: &str = "csprusd_test_contract_package_hash";
 

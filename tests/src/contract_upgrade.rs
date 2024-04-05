@@ -1,13 +1,20 @@
 use casper_engine_test_support::{
     ExecuteRequestBuilder, InMemoryWasmTestBuilder, DEFAULT_ACCOUNT_ADDR,
-    PRODUCTION_RUN_GENESIS_REQUEST,
+    MINIMUM_ACCOUNT_CREATION_BALANCE, PRODUCTION_RUN_GENESIS_REQUEST,
 };
-use casper_types::{runtime_args, ContractHash, Key, RuntimeArgs};
+use casper_types::{
+    runtime_args, system::mint, ApiError, ContractHash, Key, PublicKey, RuntimeArgs, U256,
+};
 
 use crate::utility::constants::{
-    ACCOUNT_1_ADDR, ARG_CURRENCY, ARG_DECIMALS, ARG_MASTER_MINTER, ARG_NAME, ARG_SYMBOL,
-    BLACKLISTER, CONTRACT_HASH, OWNER, PAUSER, TOKEN_CURRENCY, TOKEN_DECIMALS, TOKEN_NAME,
-    TOKEN_SYMBOL,
+    ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, AMOUNT, ARG_CURRENCY, ARG_DECIMALS,
+    ARG_MASTER_MINTER, ARG_NAME, ARG_SYMBOL, BLACKLISTER, CONFIGURE_MINTER_ENTRY_POINT_NAME,
+    CONTRACT_HASH, ERROR_EXCEEDS_MINT_ALLOWANCE, METHOD_MINT, MINTER, MINTER_ALLOWED, OWNER,
+    PAUSER, RECIPIENT, TOKEN_CURRENCY, TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL,
+};
+
+use casper_execution_engine::core::{
+    engine_state::Error as CoreError, execution::Error as ExecError,
 };
 
 /// Test assuring us that contract upgrades work as expected
@@ -22,6 +29,7 @@ use crate::utility::constants::{
 #[test]
 fn test_contract_upgrades() {
     let account_1_key: Key = Key::Account(*ACCOUNT_1_ADDR);
+    let _account_2_key: Key = Key::Account(*ACCOUNT_2_ADDR);
     // install v0 of contract
     let mut builder = InMemoryWasmTestBuilder::default();
     builder
@@ -29,7 +37,7 @@ fn test_contract_upgrades() {
         .commit();
 
     // Install the first version of the contract
-    let contract_v0_file: &str = "./../contract_versions/v0/csprUSD_v0.wasm"; // searches given file in: tests/wasm/
+    let contract_v0_file: &str = "./../contract_versions/v0/csprusd_v0.wasm"; // searches given file in: tests/wasm/
     let install_request_1 = ExecuteRequestBuilder::standard(
         *DEFAULT_ACCOUNT_ADDR,
         contract_v0_file,
@@ -58,43 +66,49 @@ fn test_contract_upgrades() {
         .map(ContractHash::new)
         .expect("should have contract hash");
 
-    // Check the contract hash.
-    let contract_v1_hash = builder
-        .get_expected_account(*DEFAULT_ACCOUNT_ADDR)
-        .named_keys()
-        .get("csprusd_contract_hash_CasperTest")
-        .expect("must have contract hash key as part of contract creation")
-        .into_hash()
-        .map(ContractHash::new)
-        .expect("must get contract hash");
-
-    // Verify the first contract version is 1. We'll check this when we upgrade later.
-    // TODO: !!! our contract doesn't have "version" stored in the account's or contract's named
-    // keys. Do we need it?  maybe a timestamp as version?
-    // let version_key = *account
-    //     .named_keys()
-    //     .get("version")
-    //     .expect("version uref should exist");
-
-    // let version = builder
-    //     .query(None, version_key, &[])
-    //     .expect("should be stored value.")
-    //     .as_cl_value()
-    //     .expect("should be cl value.")
-    //     .clone()
-    //     .into_t::<u32>()
-    //     .expect("should be u32.");
-    // assert_eq!(version, 1);
-    // TODO: !!!
+    let id: Option<u64> = None;
+    let transfer_1_args = runtime_args! {
+        mint::ARG_TARGET => *ACCOUNT_1_ADDR,
+        mint::ARG_AMOUNT => MINIMUM_ACCOUNT_CREATION_BALANCE,
+        mint::ARG_ID => id,
+    };
+    let transfer_request_1 =
+        ExecuteRequestBuilder::transfer(*DEFAULT_ACCOUNT_ADDR, transfer_1_args).build();
+    builder.exec(transfer_request_1).expect_success().commit();
 
     // prove that blacklister is a Key::Account
     let blacklister: Key = builder.get_value(csprusd_token, BLACKLISTER);
+
     assert_eq!(blacklister, account_1_key);
 
     // do some side effects: name a minter, mint some money, blacklist someone, etc
+    // configure minter
+    let configure_minter_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *ACCOUNT_1_ADDR,
+        csprusd_token,
+        CONFIGURE_MINTER_ENTRY_POINT_NAME,
+        runtime_args! {MINTER => account_1_key, MINTER_ALLOWED => U256::from(10)},
+    )
+    .build();
+    builder
+        .exec(configure_minter_request)
+        .expect_success()
+        .commit();
+
+    let mint1_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *ACCOUNT_1_ADDR,
+        csprusd_token,
+        METHOD_MINT,
+        runtime_args! {RECIPIENT => account_1_key, AMOUNT => U256::from(5)},
+    )
+    .build();
+    builder.exec(mint1_request).expect_success().commit();
 
     // upgrade contract to v1
-    let contract_v1_file: &str = "./../contract_versions/v1/csprUSD_v0.wasm"; // searches given file in: tests/wasm/
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    let contract_v1_file: &str = "./../contract_versions/v1/csprusd.wasm"; // searches given file in: tests/wasm/
+                                                                           // let contract_v0_file: &str = "./../contract_versions/v0/csprusd_v0.wasm"; // searches given
+                                                                           // file in: tests/wasm/
 
     let contract_v2_installation_request = ExecuteRequestBuilder::standard(
         *DEFAULT_ACCOUNT_ADDR,
@@ -106,7 +120,7 @@ fn test_contract_upgrades() {
             ARG_DECIMALS => TOKEN_DECIMALS,
             ARG_MASTER_MINTER => account_1_key,
             PAUSER => account_1_key,
-            BLACKLISTER => account_1_key,
+            BLACKLISTER => ACCOUNT_1_PUBLIC_KEY.clone(),
             OWNER => account_1_key,
         },
     )
@@ -117,239 +131,50 @@ fn test_contract_upgrades() {
         .expect_success()
         .commit();
 
-    // prove that blacklister is now a PublicKey
+    let account = builder
+        .get_account(*DEFAULT_ACCOUNT_ADDR)
+        .expect("should have account");
+    let csprusd_token1 = account
+        .named_keys()
+        .get(CONTRACT_HASH)
+        .and_then(|key| key.into_hash())
+        .map(ContractHash::new)
+        .expect("should have contract hash");
+
+    let blacklister: Key = builder.get_value(csprusd_token1, BLACKLISTER);
+
+    // proof that contract was updated: there is data under "random_key"
+    let random_v1_data: PublicKey = builder.get_value(csprusd_token1, "random_key");
+    assert_eq!(random_v1_data, ACCOUNT_1_PUBLIC_KEY.clone());
+
+    // proof that you can't change a named key if you also change its type
+    assert_eq!(blacklister, account_1_key);
 
     // prove that new version still has access to the same data: minting allowance changed, etc
     //  do this by methods, not only by just simply querying global state e.g.: who is owner, etc?
     //   e.g.: try minting some money which exceeds the minting allowance left from operations in v0
+    // let minter_allowed = builder.query(
+    //     None,
+    //     Key::Hash(csprusd_token1.to_bytes().unwrap().try_into().unwrap()),
+    //     &["minter_allowed".to_string()],
+    // );
+    // println!("minter allowed uref: {:?}", minter_allowed);
+
+    let mint1_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *ACCOUNT_1_ADDR,
+        csprusd_token,
+        METHOD_MINT,
+        runtime_args! {RECIPIENT => account_1_key, AMOUNT => U256::from(6)},
+    )
+    .build();
+    builder.exec(mint1_request).commit();
+
+    let error = builder.get_error().expect("should have error");
+    assert!(
+        matches!(error, CoreError::Exec(ExecError::Revert(ApiError::User(user_error))) if user_error == ERROR_EXCEEDS_MINT_ALLOWANCE),
+        "{:?}",
+        error
+    );
+
+    // TODO: disable old version and prove that it no longer works
 }
-
-// /// Install version 1 of the counter contract and check its functionality.
-//     /// Then, upgrade the contract by installing a second Wasm for version 2.
-//     /// Check the functionality of the second version.
-//     /// Test summary:
-//     /// - Install the counter-v1.wasm contract.
-//     /// - Check the contract hash.
-//     /// - Check the contract version is 1.
-//     /// - Verify the initial value of count is 0.
-//     /// - Test the counter_inc entry point and increment the counter.
-//     /// - Verify that the count value is now 1.
-//     /// - Call the decrement entry point, which should fail.
-//     /// - Ensure the count value was not decremented and is still 1.
-//     /// - UPGRADE the contract by installing the counter-v2.wasm.
-//     /// - Assert that we have a new contract hash for the upgraded version.
-//     /// - Verify the new contract version is 2.
-//     /// - Increment the counter to check that counter_inc is still working after the upgrade.
-// Count is now 2.     /// - Call the decrement entry point and verify that the count is now 1.
-//     #[test]
-//     fn install_version1_and_upgrade_to_version2() {
-//         let mut builder = InMemoryWasmTestBuilder::default();
-//         builder
-//             .run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST)
-//             .commit();
-
-//         // Install the first version of the contract.
-//         let contract_v1_installation_request = ExecuteRequestBuilder::standard(
-//             *DEFAULT_ACCOUNT_ADDR,
-//             COUNTER_V1_WASM,
-//             runtime_args! {},
-//         )
-//         .build();
-
-//         builder
-//             .exec(contract_v1_installation_request)
-//             .expect_success()
-//             .commit();
-
-//         // Check the contract hash.
-//         let contract_v1_hash = builder
-//             .get_expected_account(*DEFAULT_ACCOUNT_ADDR)
-//             .named_keys()
-//             .get(CONTRACT_KEY)
-//             .expect("must have contract hash key as part of contract creation")
-//             .into_hash()
-//             .map(ContractHash::new)
-//             .expect("must get contract hash");
-
-//         // Verify the first contract version is 1. We'll check this when we upgrade later.
-//         let account = builder
-//             .get_account(*DEFAULT_ACCOUNT_ADDR)
-//             .expect("should have account");
-
-//         let version_key = *account
-//             .named_keys()
-//             .get(CONTRACT_VERSION_KEY)
-//             .expect("version uref should exist");
-
-//         let version = builder
-//             .query(None, version_key, &[])
-//             .expect("should be stored value.")
-//             .as_cl_value()
-//             .expect("should be cl value.")
-//             .clone()
-//             .into_t::<u32>()
-//             .expect("should be u32.");
-
-//         assert_eq!(version, 1);
-
-//         // Verify the initial value of count is 0.
-//         let contract = builder
-//             .get_contract(contract_v1_hash)
-//             .expect("this contract should exist");
-
-//         let count_key = *contract
-//             .named_keys()
-//             .get(COUNT_KEY)
-//             .expect("count uref should exist in the contract named keys");
-
-//         let count = builder
-//             .query(None, count_key, &[])
-//             .expect("should be stored value.")
-//             .as_cl_value()
-//             .expect("should be cl value.")
-//             .clone()
-//             .into_t::<i32>()
-//             .expect("should be i32.");
-
-//         assert_eq!(count, 0);
-
-//         // Use session code to increment the counter.
-//         let session_code_request = ExecuteRequestBuilder::standard(
-//             *DEFAULT_ACCOUNT_ADDR,
-//             COUNTER_CALL_WASM,
-//             runtime_args! {
-//                 CONTRACT_KEY => contract_v1_hash
-//             },
-//         )
-//         .build();
-
-//         builder.exec(session_code_request).expect_success().commit();
-
-//         // Verify the value of count is now 1.
-//         let incremented_count = builder
-//             .query(None, count_key, &[])
-//             .expect("should be stored value.")
-//             .as_cl_value()
-//             .expect("should be cl value.")
-//             .clone()
-//             .into_t::<i32>()
-//             .expect("should be i32.");
-
-//         assert_eq!(incremented_count, 1);
-
-//         // Call the decrement entry point, which should not be in version 1 before the upgrade.
-//         let contract_decrement_request = ExecuteRequestBuilder::contract_call_by_hash(
-//             *DEFAULT_ACCOUNT_ADDR,
-//             contract_v1_hash,
-//             ENTRY_POINT_COUNTER_DECREMENT,
-//             runtime_args! {},
-//         )
-//         .build();
-
-//         // Try executing the decrement entry point and expect an error.
-//         builder
-//             .exec(contract_decrement_request)
-//             .expect_failure()
-//             .commit();
-
-//         // Ensure the count value was not decremented.
-//         let current_count = builder
-//             .query(None, count_key, &[])
-//             .expect("should be stored value.")
-//             .as_cl_value()
-//             .expect("should be cl value.")
-//             .clone()
-//             .into_t::<i32>()
-//             .expect("should be i32.");
-
-//         assert_eq!(current_count, 1);
-
-//         ////////////////////////////////////////////////////////////////
-//         // Upgrade the contract.
-//         ////////////////////////////////////////////////////////////////
-//         let contract_v2_installation_request = ExecuteRequestBuilder::standard(
-//             *DEFAULT_ACCOUNT_ADDR,
-//             COUNTER_V2_WASM,
-//             runtime_args! {},
-//         )
-//         .build();
-
-//         builder
-//             .exec(contract_v2_installation_request)
-//             .expect_success()
-//             .commit();
-
-//         let contract_v2_hash = builder
-//             .get_expected_account(*DEFAULT_ACCOUNT_ADDR)
-//             .named_keys()
-//             .get(CONTRACT_KEY)
-//             .expect("must have contract hash key as part of contract creation")
-//             .into_hash()
-//             .map(ContractHash::new)
-//             .expect("must get contract hash");
-
-//         // Assert that we have a new contract hash for the upgraded version.
-//         assert_ne!(contract_v1_hash, contract_v2_hash);
-
-//         // Verify the contract version is now 2.
-//         let account = builder
-//             .get_account(*DEFAULT_ACCOUNT_ADDR)
-//             .expect("should have account");
-
-//         let version_key = *account
-//             .named_keys()
-//             .get(CONTRACT_VERSION_KEY)
-//             .expect("version uref should exist");
-
-//         let version = builder
-//             .query(None, version_key, &[])
-//             .expect("should be stored value.")
-//             .as_cl_value()
-//             .expect("should be cl value.")
-//             .clone()
-//             .into_t::<u32>()
-//             .expect("should be u32.");
-
-//         assert_eq!(version, 2);
-
-//         // Call the increment entry point to increment the value stored under "count".
-//         let contract_increment_request = ExecuteRequestBuilder::contract_call_by_hash(
-//             *DEFAULT_ACCOUNT_ADDR,
-//             contract_v2_hash,
-//             ENTRY_POINT_COUNTER_INC,
-//             runtime_args! {},
-//         )
-//         .build();
-
-//         builder
-//             .exec(contract_increment_request)
-//             .expect_success()
-//             .commit();
-
-//         // Call the decrement entry point to decrement the value stored under "count".
-//         let contract_call_request = ExecuteRequestBuilder::contract_call_by_hash(
-//             *DEFAULT_ACCOUNT_ADDR,
-//             contract_v2_hash,
-//             ENTRY_POINT_COUNTER_DECREMENT,
-//             runtime_args! {},
-//         )
-//         .build();
-
-//         builder
-//             .exec(contract_call_request)
-//             .expect_success()
-//             .commit();
-
-//         // Expect the counter to be 1 now.
-//         // This tells us the contract was successfully upgraded and the decrement entry point can
-// be called.         let decremented_count = builder
-//             .query(None, count_key, &[])
-//             .expect("should be stored value.")
-//             .as_cl_value()
-//             .expect("should be cl value.")
-//             .clone()
-//             .into_t::<i32>()
-//             .expect("should be i32.");
-
-//         assert_eq!(decremented_count, 1);
-//     }

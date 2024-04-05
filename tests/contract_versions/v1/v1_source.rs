@@ -25,20 +25,20 @@ use entry_points::generate_entry_points;
 
 use casper_contract::{
     contract_api::{
-        runtime::{self, revert},
+        runtime::{self, print, revert},
         storage,
     },
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_types::{
-    contracts::NamedKeys, runtime_args, CLValue, Key, PublicKey, RuntimeArgs, U256,
+    contracts::NamedKeys, runtime_args, AsymmetricType, CLValue, Key, PublicKey, RuntimeArgs, U256,
 };
 
 use constants::{
-    ADDRESS, ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED, BLACKLISTER, CONTRACT_ACCESS,
-    CONTRACT_HASH, CONTRACT_PACKAGE_HASH, CONTRACT_VERSION, CURRENCY, DECIMALS,
-    INIT_ENTRY_POINT_NAME, IS_PAUSED, KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME,
-    NEW, OWNER, PAUSER, RECIPIENT, SPENDER, SYMBOL, TOTAL_SUPPLY,
+    ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED, BLACKLISTER, CONTRACT_ACCESS, CONTRACT_HASH,
+    CONTRACT_PACKAGE_HASH, CONTRACT_VERSION, CURRENCY, DECIMALS, INIT_ENTRY_POINT_NAME, IS_PAUSED,
+    KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME, NEW, OWNER, PAUSER, RECIPIENT,
+    SPENDER, SYMBOL, TOTAL_SUPPLY,
 };
 pub use error::CsprUSDError;
 use events::{
@@ -54,7 +54,7 @@ use utils::{
 use assertion_utils::{
     only_blacklister, only_master_minter, only_minters, only_owner, only_pauser, when_not_paused,
 };
-use blacklisting::{blacklist_pubkey, is_blacklisted_util, un_blacklist_address};
+use blacklisting::{blacklist_address, is_blacklisted_util, un_blacklist_address};
 use minters::{
     add_minter, is_minter_util, read_minter_allowed, remove_minter_util, set_minter_allowed,
     update_minter_allowance,
@@ -110,7 +110,7 @@ pub extern "C" fn pause_contract() {
     only_pauser();
 
     storage::write(get_uref(IS_PAUSED), true);
-    events::emit_event(Event::Pause(Pause {}));
+    events::emit_event(Event::Pause(Pause {}))
 }
 
 #[no_mangle]
@@ -118,7 +118,7 @@ pub extern "C" fn unpause_contract() {
     only_pauser();
 
     storage::write(get_uref(IS_PAUSED), false);
-    events::emit_event(Event::Unpause(Unpause {}));
+    events::emit_event(Event::Unpause(Unpause {}))
 }
 
 #[no_mangle]
@@ -127,7 +127,7 @@ pub extern "C" fn update_pauser() {
 
     let new_pauser: Key = runtime::get_named_arg(NEW);
     storage::write(get_uref(PAUSER), new_pauser);
-    events::emit_event(Event::PauserChanged(NewPauser { new_pauser }));
+    events::emit_event(Event::PauserChanged(NewPauser { new_pauser }))
 }
 
 #[no_mangle]
@@ -138,7 +138,7 @@ pub extern "C" fn update_master_minter() {
     storage::write(get_uref(MASTER_MINTER), new_master_minter);
     events::emit_event(Event::MasterMinterChanged(MasterMinterChanged {
         new_master_minter,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -150,39 +150,43 @@ pub extern "C" fn is_blacklisted() {
 
 #[no_mangle]
 pub extern "C" fn blacklist() {
+    print("In blacklist()");
     only_blacklister();
 
-    let pubkey_to_blacklist: PublicKey = runtime::get_named_arg(KEY);
-    blacklist_pubkey(pubkey_to_blacklist.clone());
+    let address_to_blacklist: Key = runtime::get_named_arg(KEY);
+    blacklist_address(address_to_blacklist);
 
     events::emit_event(Event::Blacklisted(Blacklisted {
-        account: pubkey_to_blacklist,
-    }));
+        account: address_to_blacklist,
+    }))
 }
 
 #[no_mangle]
 pub extern "C" fn un_blacklist() {
     only_blacklister();
 
-    let address_to_un_blacklist: PublicKey = runtime::get_named_arg(KEY);
-    un_blacklist_address(address_to_un_blacklist.clone());
+    let address_to_un_blacklist: Key = runtime::get_named_arg(KEY);
+    un_blacklist_address(address_to_un_blacklist);
 
     events::emit_event(Event::UnBlacklisted(UnBlacklisted {
         account: address_to_un_blacklist,
-    }));
+    }))
 }
 
 #[no_mangle]
 pub extern "C" fn update_blacklister() {
+    print("Updating blacklister");
     only_owner();
+    print("Passed onlyOwner assertion");
 
     let new_blacklister: PublicKey = runtime::get_named_arg(NEW);
     storage::write(get_uref(BLACKLISTER), new_blacklister.clone());
 
     events::emit_event(Event::BlacklisterChanged(BlacklisterChanged {
         new_blacklister,
-    }));
+    }))
 }
+
 
 #[no_mangle]
 pub extern "C" fn transfer_ownership() {
@@ -192,7 +196,7 @@ pub extern "C" fn transfer_ownership() {
     storage::write(get_uref(OWNER), new_owner);
     events::emit_event(Event::OwnershipTransferred(OwnershipTransferred {
         new_owner,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -210,7 +214,7 @@ pub extern "C" fn configure_minter() {
     events::emit_event(Event::MinterConfigured(MinterConfigured {
         minter,
         minter_allowance,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -220,7 +224,7 @@ pub extern "C" fn remove_minter() {
     let minter = runtime::get_named_arg(MINTER);
     remove_minter_util(minter);
     set_minter_allowed(minter, U256::zero());
-    events::emit_event(Event::MinterRemoved(MinterRemoved { minter }));
+    events::emit_event(Event::MinterRemoved(MinterRemoved { minter }))
 }
 
 #[no_mangle]
@@ -241,8 +245,8 @@ pub extern "C" fn is_minter() {
 
 #[no_mangle]
 pub extern "C" fn balance_of() {
-    let address: Key = runtime::get_named_arg(ADDRESS);
-    let balance = balances::read_balance_from(get_balances_uref(), address);
+    let key: Key = runtime::get_named_arg(KEY);
+    let balance = balances::read_balance_from(get_balances_uref(), key);
     runtime::ret(CLValue::from_t(balance).unwrap_or_revert());
 }
 
@@ -276,7 +280,7 @@ pub extern "C" fn approve() {
         owner,
         spender,
         allowance: amount,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -303,7 +307,7 @@ pub extern "C" fn decrease_allowance() {
         spender,
         decr_by: amount,
         allowance: new_allowance,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -330,7 +334,7 @@ pub extern "C" fn increase_allowance() {
         spender,
         allowance: new_allowance,
         inc_by: amount,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -355,7 +359,7 @@ pub extern "C" fn transfer() {
         sender,
         recipient,
         amount,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -396,7 +400,7 @@ pub extern "C" fn transfer_from() {
         owner,
         recipient,
         amount,
-    }));
+    }))
 }
 
 #[no_mangle]
@@ -534,7 +538,7 @@ pub fn install_contract() {
     let owner: Key = runtime::get_named_arg(OWNER);
 
     let mut named_keys = NamedKeys::new();
-    named_keys.insert(NAME.to_string(), storage::new_uref(name).into());
+    named_keys.insert(NAME.to_string(), storage::new_uref(name.clone()).into());
     named_keys.insert(SYMBOL.to_string(), storage::new_uref(symbol).into());
     named_keys.insert(CURRENCY.to_string(), storage::new_uref(currency).into());
     named_keys.insert(DECIMALS.to_string(), storage::new_uref(decimals).into());
@@ -554,7 +558,7 @@ pub fn install_contract() {
         storage::new_uref(U256::zero()).into(),
     );
 
-    let blacklisted_init_value: Vec<PublicKey> = Vec::new();
+    let blacklisted_init_value: Vec<Key> = Vec::new();
     named_keys.insert(
         BLACKLISTED.to_string(),
         storage::new_uref(blacklisted_init_value).into(),
@@ -568,11 +572,11 @@ pub fn install_contract() {
         Some(CONTRACT_PACKAGE_HASH.to_string()),
         Some(CONTRACT_ACCESS.to_string()),
     );
-    let package_hash = runtime::get_key(CONTRACT_PACKAGE_HASH).unwrap_or_revert();
+    let package_hash = runtime::get_key(&CONTRACT_PACKAGE_HASH).unwrap_or_revert();
 
     // Store contract_hash and contract_version under the keys CONTRACT_NAME and CONTRACT_VERSION
     runtime::put_key(CONTRACT_HASH, contract_hash.into());
-    runtime::put_key(CONTRACT_PACKAGE_HASH, package_hash);
+    runtime::put_key(CONTRACT_PACKAGE_HASH, package_hash.into());
     runtime::put_key(CONTRACT_VERSION, storage::new_uref(contract_version).into());
 
     // Call contract to initialize it
@@ -580,7 +584,56 @@ pub fn install_contract() {
     runtime::call_contract::<()>(contract_hash, INIT_ENTRY_POINT_NAME, init_args);
 }
 
+pub fn upgrade_contract_blacklister_key_to_publickey() {
+    print("Upgrading contract");
+    // update blacklister
+    let blacklister: PublicKey = runtime::get_named_arg(BLACKLISTER);
+    let s = blacklister.to_hex();
+    print(&s);
+
+    let mut named_keys = NamedKeys::new();
+    named_keys.insert(
+        BLACKLISTER.to_string(),
+        Key::URef(storage::new_uref(blacklister.clone())),
+    );
+    named_keys.insert(
+        "random_key".to_string(),
+        Key::URef(storage::new_uref(blacklister)),
+    );
+    print("added bll to named keys");
+
+    let entry_points = generate_entry_points();
+
+    // Get the counter package hash so we can upgrade the package.
+    let counter_package_hash = runtime::get_key(CONTRACT_PACKAGE_HASH)
+        .unwrap_or_revert()
+        .into_hash()
+        .unwrap()
+        .into();
+
+    let (contract_hash, contract_version) =
+        storage::add_contract_version(counter_package_hash, entry_points, named_keys);
+    print("upgraded contract");
+    let package_hash = runtime::get_key(&CONTRACT_PACKAGE_HASH).unwrap_or_revert();
+
+    // Store contract_hash and contract_version under the keys CONTRACT_NAME and CONTRACT_VERSION
+    runtime::put_key(CONTRACT_HASH, contract_hash.into());
+    runtime::put_key(CONTRACT_PACKAGE_HASH, package_hash.into());
+    runtime::put_key(CONTRACT_VERSION, storage::new_uref(contract_version).into());
+}
+
 #[no_mangle]
 pub extern "C" fn call() {
-    install_contract()
+    match runtime::get_key(CONTRACT_VERSION) {
+        None => {
+            // The given key doesn't exist, so install the contract.
+            install_contract();
+            // Next, upgrade the contract.
+            upgrade_contract_blacklister_key_to_publickey();
+        }
+        Some(_contract_key) => {
+            // The stored contract and key exist, so upgrade the contract.
+            upgrade_contract_blacklister_key_to_publickey();
+        }
+    }
 }

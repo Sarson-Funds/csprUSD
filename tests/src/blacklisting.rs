@@ -1,15 +1,17 @@
 use crate::utility::{
     constants::{
-        ACCOUNT_1_ADDR, ACCOUNT_2_ADDR, ACCOUNT_2_PUBLIC_KEY, AMOUNT, BLACKLIST, BLACKLISTED,
-        BLACKLISTED_ACCOUNT, CONFIGURE_MINTER_ENTRY_POINT_NAME, KEY, METHOD_MINT, MINTER,
-        MINTER_ALLOWED, NEW, NON_BLACKLISTER, RECIPIENT, TOKEN_OWNER_AMOUNT_1, UN_BLACKLIST,
-        UPDATE_BLACKLISTER_ENTRY_POINT,
+        ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, ACCOUNT_2_PUBLIC_KEY, AMOUNT,
+        BLACKLIST, BLACKLISTED, BLACKLISTED_ACCOUNT, CONFIGURE_MINTER_ENTRY_POINT_NAME, KEY,
+        METHOD_MINT, MINTER, MINTER_ALLOWED, NEW, NON_BLACKLISTER, RECIPIENT, TOKEN_OWNER_AMOUNT_1,
+        UN_BLACKLIST, UPDATE_BLACKLISTER_ENTRY_POINT,
     },
     installer_request_builders::{csprusd_check_balance_of, setup, TestContext},
 };
-use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR};
+use casper_engine_test_support::{
+    ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_PUBLIC_KEY,
+};
 
-use casper_types::{bytesrepr::ToBytes, runtime_args, ApiError, Key, RuntimeArgs, U256};
+use casper_types::{bytesrepr::ToBytes, runtime_args, ApiError, Key, PublicKey, RuntimeArgs, U256};
 
 use casper_execution_engine::core::{
     engine_state::Error as CoreError, execution::Error as ExecError,
@@ -17,7 +19,6 @@ use casper_execution_engine::core::{
 
 #[test]
 fn test_blacklisting() {
-    let account_1_key: Key = Key::Account(*ACCOUNT_1_ADDR); // owner, master-minter, blacklister
     let account_2_key: Key = Key::Account(*ACCOUNT_2_ADDR); // non-blacklister
     let account_3_key: Key = Key::Account(*DEFAULT_ACCOUNT_ADDR); // this account will be (un)blacklisted
 
@@ -74,7 +75,7 @@ fn test_blacklisting() {
         *ACCOUNT_1_ADDR,
         csprusd_token,
         BLACKLIST,
-        runtime_args! {KEY => account_3_key},
+        runtime_args! {KEY => DEFAULT_ACCOUNT_PUBLIC_KEY.clone()},
     )
     .build();
     builder
@@ -82,7 +83,7 @@ fn test_blacklisting() {
         .expect_success()
         .commit();
 
-    // minting to account_3_key will faile because target is blacklisted
+    // minting to account_3_key will fail because target is blacklisted
     let mint_request = ExecuteRequestBuilder::contract_call_by_hash(
         *ACCOUNT_2_ADDR,
         csprusd_token,
@@ -121,7 +122,7 @@ fn test_blacklisting() {
         *ACCOUNT_1_ADDR,
         csprusd_token,
         UN_BLACKLIST,
-        runtime_args! {KEY => account_3_key},
+        runtime_args! {KEY => DEFAULT_ACCOUNT_PUBLIC_KEY.clone()},
     )
     .build();
     builder
@@ -149,7 +150,7 @@ fn test_blacklisting() {
         *ACCOUNT_1_ADDR,
         csprusd_token,
         BLACKLIST,
-        runtime_args! {KEY => account_1_key},
+        runtime_args! {KEY => ACCOUNT_1_PUBLIC_KEY.clone()},
     )
     .build();
     builder
@@ -157,16 +158,13 @@ fn test_blacklisting() {
         .expect_success()
         .commit();
 
-    let blacklisted: Vec<Key> = builder.get_value(csprusd_token, BLACKLISTED);
+    let blacklisted: Vec<PublicKey> = builder.get_value(csprusd_token, BLACKLISTED);
     for i in 0..blacklisted.len() {
-        println!(
-            "key={}",
-            blacklisted.get(i).unwrap().to_formatted_string().as_str()
-        );
+        println!("key={:?}", *blacklisted.get(i).unwrap());
     }
     assert_eq!(
         blacklisted.get(0).unwrap().to_bytes(),
-        account_1_key.to_bytes()
+        ACCOUNT_1_PUBLIC_KEY.clone().to_bytes()
     );
 
     // update blacklister
