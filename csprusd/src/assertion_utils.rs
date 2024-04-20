@@ -15,9 +15,11 @@ use minters::is_minter_util;
 
 pub(crate) fn only_pauser() {
     let caller: Key = utils::get_immediate_caller_address().unwrap_or_revert();
-    let current_pauser = read_from::<Key>(PAUSER);
 
-    if caller != current_pauser {
+    let current_pauser_pub_key: PublicKey = read_from::<PublicKey>(PAUSER);
+    let current_pauser_acc_hash = Key::Account(current_pauser_pub_key.to_account_hash());
+
+    if caller != current_pauser_acc_hash {
         revert(CsprUSDError::NotPauser);
     }
 }

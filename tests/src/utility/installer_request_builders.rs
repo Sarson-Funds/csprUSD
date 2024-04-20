@@ -48,7 +48,7 @@ pub(crate) fn setup() -> (InMemoryWasmTestBuilder, TestContext) {
         ARG_CURRENCY => TOKEN_CURRENCY,
         ARG_DECIMALS => TOKEN_DECIMALS,
         ARG_MASTER_MINTER => account_1_key,
-        PAUSER => account_1_key,
+        PAUSER => ACCOUNT_1_PUBLIC_KEY.clone(),
         BLACKLISTER => ACCOUNT_1_PUBLIC_KEY.clone(),
         OWNER => account_1_key,
     })

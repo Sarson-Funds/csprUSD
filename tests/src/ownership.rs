@@ -1,4 +1,4 @@
-use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR};
+use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_PUBLIC_KEY};
 use casper_types::{runtime_args, ApiError, Key, RuntimeArgs};
 
 use crate::utility::{
@@ -17,7 +17,6 @@ use casper_execution_engine::core::{
 fn test_ownership() {
     let account_1_key: Key = Key::Account(*ACCOUNT_1_ADDR); // owner, master-minter, blacklister
     let account_2_key: Key = Key::Account(*ACCOUNT_2_ADDR); // non-owner
-    let account_3_key: Key = Key::Account(*DEFAULT_ACCOUNT_ADDR); // this account will be (un)set as pauser
 
     // install contract
     let (mut builder, TestContext { csprusd_token, .. }) = setup();
@@ -31,7 +30,7 @@ fn test_ownership() {
         *ACCOUNT_2_ADDR,
         csprusd_token,
         METHOD_UPDATE_PAUSER,
-        runtime_args! {NEW => account_3_key},
+        runtime_args! {NEW => DEFAULT_ACCOUNT_PUBLIC_KEY.clone()},
     )
     .build();
 
@@ -62,7 +61,7 @@ fn test_ownership() {
         *ACCOUNT_2_ADDR,
         csprusd_token,
         METHOD_UPDATE_PAUSER,
-        runtime_args! {NEW => account_3_key},
+        runtime_args! {NEW => DEFAULT_ACCOUNT_PUBLIC_KEY.clone()},
     )
     .build();
 

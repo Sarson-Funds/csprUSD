@@ -72,7 +72,8 @@ pub const UPDATE_PAUSER_ENTRY_POINT_NAME: &str = "update_pauser";
 pub const TRANSFER_OWNERSHIP_ENTRY_POINT_NAME: &str = "transfer_ownership";
 pub const MASTER_MINTER: &str = "master_minter";
 
-pub const BLACKLISTED: &str = "blacklisted";
+pub const BLACKLISTED_LIST: &str = "blacklisted_list";
+pub const BLACKLISTED_DICT: &str = "blacklisted_dict";
 pub const MINTERS: &str = "minters";
 pub const CURRENCY: &str = "currency";
 pub const MINTER_ALLOWED: &str = "minter_allowed";

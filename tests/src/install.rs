@@ -45,8 +45,8 @@ fn should_have_queryable_properties() {
     let owner: Key = builder.get_value(csprusd_token, OWNER);
     assert_eq!(owner, account_1_key);
 
-    let pauser: Key = builder.get_value(csprusd_token, PAUSER);
-    assert_eq!(pauser, account_1_key);
+    let pauser: PublicKey = builder.get_value(csprusd_token, PAUSER);
+    assert_eq!(pauser, ACCOUNT_1_PUBLIC_KEY.clone());
 
     let owner_balance = csprusd_check_balance_of(&mut builder, &csprusd_token, account_1_key);
     assert_eq!(owner_balance, total_supply);

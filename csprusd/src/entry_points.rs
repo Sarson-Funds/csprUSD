@@ -14,7 +14,7 @@ use crate::constants::{
     INIT_ENTRY_POINT_NAME, IS_BLACKLISTED_ENTRY_POINT_NAME, IS_MINTER_ENTRY_POINT_NAME,
     IS_PAUSED_ENTRY_POINT_NAME, MASTER_MINTER_ENTRY_POINT_NAME, MINTER,
     MINTER_ALLOWANCE_ENTRY_POINT_NAME, MINTER_ALLOWED, MINT_ENTRY_POINT_NAME,
-    NAME_ENTRY_POINT_NAME, NEW, OWNER, OWNER_ENTRY_POINT_NAME, PAUSER, PAUSER_ENTRY_POINT_NAME,
+    NAME_ENTRY_POINT_NAME, NEW, OWNER, OWNER_ENTRY_POINT_NAME, PAUSER_ENTRY_POINT_NAME,
     PAUSE_ENTRY_POINT_NAME, RECIPIENT, REMOVE_MINTER_ENTRY_POINT_NAME, SPENDER,
     SYMBOL_ENTRY_POINT_NAME, TOTAL_SUPPLY_ENTRY_POINT_NAME, TRANSFER_ENTRY_POINT_NAME,
     TRANSFER_FROM_ENTRY_POINT_NAME, TRANSFER_OWNERSHIP_ENTRY_POINT_NAME, UNPAUSE_ENTRY_POINT_NAME,
@@ -48,7 +48,7 @@ pub fn pauser() -> EntryPoint {
     EntryPoint::new(
         String::from(PAUSER_ENTRY_POINT_NAME),
         Vec::new(),
-        AccountHash::cl_type(),
+        PublicKey::cl_type(),
         EntryPointAccess::Public,
         EntryPointType::Contract,
     )
@@ -271,7 +271,7 @@ pub fn unpause_contract() -> EntryPoint {
 pub fn update_pauser() -> EntryPoint {
     EntryPoint::new(
         String::from(UPDATE_PAUSER_ENTRY_POINT_NAME),
-        vec![Parameter::new(PAUSER, AccountHash::cl_type())],
+        vec![Parameter::new(NEW, PublicKey::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

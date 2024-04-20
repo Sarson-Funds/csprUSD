@@ -1,11 +1,11 @@
 use crate::utility::{
     constants::{
-        ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, AMOUNT, APPROVE_ENTRY_POINT_NAME,
-        ARG_CURRENCY, ARG_DECIMALS, ARG_MASTER_MINTER, ARG_NAME, ARG_SYMBOL, BLACKLISTER,
-        CONFIGURE_MINTER_ENTRY_POINT_NAME, CONTRACT_PAUSED_ERROR_CODE, IS_PAUSED, METHOD_PAUSE,
-        METHOD_UNPAUSE, METHOD_UPDATE_PAUSER, MINTER, MINTER_ALLOWED, NEW, NON_PAUSER_ERROR_CODE,
-        OWNER, PAUSER, RECIPIENT, SPENDER, TOKEN_CURRENCY, TOKEN_DECIMALS, TOKEN_NAME,
-        TOKEN_SYMBOL,
+        ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, ACCOUNT_2_PUBLIC_KEY, AMOUNT,
+        APPROVE_ENTRY_POINT_NAME, ARG_CURRENCY, ARG_DECIMALS, ARG_MASTER_MINTER, ARG_NAME,
+        ARG_SYMBOL, BLACKLISTER, CONFIGURE_MINTER_ENTRY_POINT_NAME, CONTRACT_PAUSED_ERROR_CODE,
+        IS_PAUSED, METHOD_PAUSE, METHOD_UNPAUSE, METHOD_UPDATE_PAUSER, MINTER, MINTER_ALLOWED, NEW,
+        NON_PAUSER_ERROR_CODE, OWNER, PAUSER, RECIPIENT, SPENDER, TOKEN_CURRENCY, TOKEN_DECIMALS,
+        TOKEN_NAME, TOKEN_SYMBOL,
     },
     installer_request_builders::{setup_with_args, TestContext},
 };
@@ -17,12 +17,11 @@ use casper_execution_engine::{
     },
     storage::global_state::in_memory::InMemoryGlobalState,
 };
-use casper_types::{runtime_args, ApiError, Key, RuntimeArgs, U256};
+use casper_types::{runtime_args, ApiError, Key, PublicKey, RuntimeArgs, U256};
 
 #[test]
 fn only_pauser_can_pause_and_can_update_pauser() {
     let account_1_key: Key = Key::Account(*ACCOUNT_1_ADDR);
-    let account_2_key = Key::Account(*ACCOUNT_2_ADDR);
 
     let (mut builder, TestContext { csprusd_token, .. }) = setup_with_args(runtime_args! {
         ARG_NAME => TOKEN_NAME,
@@ -30,14 +29,14 @@ fn only_pauser_can_pause_and_can_update_pauser() {
         ARG_CURRENCY => TOKEN_CURRENCY,
         ARG_DECIMALS => TOKEN_DECIMALS,
         ARG_MASTER_MINTER => account_1_key,
-        PAUSER => account_1_key,
+        PAUSER => ACCOUNT_1_PUBLIC_KEY.clone(),
         BLACKLISTER => ACCOUNT_1_PUBLIC_KEY.clone(),
         OWNER => account_1_key,
     });
 
     // assure who's the pauser
-    let pauser: Key = builder.get_value(csprusd_token, PAUSER);
-    assert_eq!(pauser, account_1_key);
+    let pauser: PublicKey = builder.get_value(csprusd_token, PAUSER);
+    assert_eq!(pauser, ACCOUNT_1_PUBLIC_KEY.clone());
 
     // non-pauser account tries to pause
     let non_pauser_pause_contract_request = ExecuteRequestBuilder::contract_call_by_hash(
@@ -97,7 +96,7 @@ fn only_pauser_can_pause_and_can_update_pauser() {
         *ACCOUNT_1_ADDR,
         csprusd_token,
         METHOD_UPDATE_PAUSER,
-        runtime_args! {NEW => account_2_key},
+        runtime_args! {NEW => ACCOUNT_2_PUBLIC_KEY.clone()},
     )
     .build();
     builder
@@ -106,8 +105,8 @@ fn only_pauser_can_pause_and_can_update_pauser() {
         .commit();
 
     // assure who's the pauser
-    let pauser: Key = builder.get_value(csprusd_token, PAUSER);
-    assert_eq!(pauser, account_2_key);
+    let pauser: PublicKey = builder.get_value(csprusd_token, PAUSER);
+    assert_eq!(pauser, ACCOUNT_2_PUBLIC_KEY.clone());
 
     // assure old pauser can't unpause contract
     let non_pauser_unpause_contract_request = ExecuteRequestBuilder::contract_call_by_hash(
@@ -153,7 +152,7 @@ fn wont_execute_entrypoints_guarded_by_when_not_paused() {
         ARG_CURRENCY => TOKEN_CURRENCY,
         ARG_DECIMALS => TOKEN_DECIMALS,
         ARG_MASTER_MINTER => account_1_key,
-        PAUSER => account_1_key,
+        PAUSER => ACCOUNT_1_PUBLIC_KEY.clone(),
         BLACKLISTER => ACCOUNT_1_PUBLIC_KEY.clone(),
         OWNER => account_1_key,
     });
@@ -163,8 +162,8 @@ fn wont_execute_entrypoints_guarded_by_when_not_paused() {
     assert!(!paused);
 
     // assure who's the pauser
-    let pauser: Key = builder.get_value(csprusd_token, PAUSER);
-    assert_eq!(pauser, account_1_key);
+    let pauser: PublicKey = builder.get_value(csprusd_token, PAUSER);
+    assert_eq!(pauser, ACCOUNT_1_PUBLIC_KEY.clone());
 
     // pause contract
     let pause_contract_request = ExecuteRequestBuilder::contract_call_by_hash(

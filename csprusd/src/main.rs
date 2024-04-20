@@ -35,8 +35,8 @@ use casper_types::{
 };
 
 use constants::{
-    ADDRESS, ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED, BLACKLISTER, CONTRACT_ACCESS,
-    CONTRACT_HASH, CONTRACT_PACKAGE_HASH, CONTRACT_VERSION, CURRENCY, DECIMALS,
+    ADDRESS, ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED_DICT, BLACKLISTED_LIST, BLACKLISTER,
+    CONTRACT_ACCESS, CONTRACT_HASH, CONTRACT_PACKAGE_HASH, CONTRACT_VERSION, CURRENCY, DECIMALS,
     INIT_ENTRY_POINT_NAME, IS_PAUSED, KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME,
     NEW, OWNER, PAUSER, RECIPIENT, SPENDER, SYMBOL, TOTAL_SUPPLY,
 };
@@ -72,7 +72,7 @@ pub extern "C" fn symbol() {
 
 #[no_mangle]
 pub extern "C" fn pauser() {
-    runtime::ret(CLValue::from_t(utils::read_from::<Key>(PAUSER)).unwrap_or_revert());
+    runtime::ret(CLValue::from_t(utils::read_from::<PublicKey>(PAUSER)).unwrap_or_revert());
 }
 
 #[no_mangle]
@@ -125,8 +125,8 @@ pub extern "C" fn unpause_contract() {
 pub extern "C" fn update_pauser() {
     only_owner();
 
-    let new_pauser: Key = runtime::get_named_arg(NEW);
-    storage::write(get_uref(PAUSER), new_pauser);
+    let new_pauser: PublicKey = runtime::get_named_arg(NEW);
+    storage::write(get_uref(PAUSER), new_pauser.clone());
     events::emit_event(Event::PauserChanged(NewPauser { new_pauser }));
 }
 
@@ -514,6 +514,10 @@ pub extern "C" fn init() {
     storage::new_dictionary(MINTER_ALLOWED)
         .unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
 
+    // BLACKLISTED_DICT - used for O(1) lookup
+    storage::new_dictionary(BLACKLISTED_DICT)
+        .unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
+
     let master_minter: Key = runtime::get_named_arg(MASTER_MINTER);
     add_minter(master_minter);
 
@@ -529,7 +533,7 @@ pub fn install_contract() {
     let currency: String = runtime::get_named_arg(CURRENCY);
     let decimals: u8 = runtime::get_named_arg(DECIMALS);
     let master_minter: Key = runtime::get_named_arg(MASTER_MINTER);
-    let pauser: Key = runtime::get_named_arg(PAUSER);
+    let pauser: PublicKey = runtime::get_named_arg(PAUSER);
     let blacklister: PublicKey = runtime::get_named_arg(BLACKLISTER);
     let owner: Key = runtime::get_named_arg(OWNER);
 
@@ -554,9 +558,10 @@ pub fn install_contract() {
         storage::new_uref(U256::zero()).into(),
     );
 
+    // BLACKLISTED_LIST - used for reading list of blacklisted accounts
     let blacklisted_init_value: Vec<PublicKey> = Vec::new();
     named_keys.insert(
-        BLACKLISTED.to_string(),
+        BLACKLISTED_LIST.to_string(),
         storage::new_uref(blacklisted_init_value).into(),
     );
 

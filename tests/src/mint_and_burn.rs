@@ -30,7 +30,7 @@ fn test_minting_and_burning() {
         ARG_CURRENCY => TOKEN_CURRENCY,
         ARG_DECIMALS => TOKEN_DECIMALS,
         ARG_MASTER_MINTER => account_1_key,
-        PAUSER => account_1_key,
+        PAUSER => ACCOUNT_1_PUBLIC_KEY.clone(),
         BLACKLISTER => ACCOUNT_1_PUBLIC_KEY.clone(),
         OWNER => account_1_key,
     });
@@ -140,7 +140,7 @@ fn test_should_not_mint_or_burn_above_limits() {
         ARG_CURRENCY => TOKEN_CURRENCY,
         ARG_DECIMALS => TOKEN_DECIMALS,
         ARG_MASTER_MINTER => account_1_key,
-        PAUSER => account_1_key,
+        PAUSER => ACCOUNT_1_PUBLIC_KEY.clone(),
         BLACKLISTER => ACCOUNT_1_PUBLIC_KEY.clone(),
         OWNER => account_1_key,
     });

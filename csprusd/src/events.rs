@@ -36,14 +36,14 @@ pub struct Burn {
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
-pub struct Pause {} // TODO: is this needed?
+pub struct Pause {}
 
 #[derive(Event, Debug, PartialEq, Eq)]
-pub struct Unpause {} // TODO: is this needed?
+pub struct Unpause {}
 
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct NewPauser {
-    pub new_pauser: Key,
+    pub new_pauser: PublicKey,
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]

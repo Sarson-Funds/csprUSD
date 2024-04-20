@@ -1,7 +1,7 @@
 use crate::utility::{
     constants::{
         ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, ACCOUNT_2_PUBLIC_KEY, AMOUNT,
-        BLACKLIST, BLACKLISTED, BLACKLISTED_ACCOUNT, CONFIGURE_MINTER_ENTRY_POINT_NAME, KEY,
+        BLACKLIST, BLACKLISTED_ACCOUNT, BLACKLISTED_LIST, CONFIGURE_MINTER_ENTRY_POINT_NAME, KEY,
         METHOD_MINT, MINTER, MINTER_ALLOWED, NEW, NON_BLACKLISTER, RECIPIENT, TOKEN_OWNER_AMOUNT_1,
         UN_BLACKLIST, UPDATE_BLACKLISTER_ENTRY_POINT,
     },
@@ -158,7 +158,7 @@ fn test_blacklisting() {
         .expect_success()
         .commit();
 
-    let blacklisted: Vec<PublicKey> = builder.get_value(csprusd_token, BLACKLISTED);
+    let blacklisted: Vec<PublicKey> = builder.get_value(csprusd_token, BLACKLISTED_LIST);
     for i in 0..blacklisted.len() {
         println!("key={:?}", *blacklisted.get(i).unwrap());
     }
