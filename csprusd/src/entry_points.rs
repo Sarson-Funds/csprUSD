@@ -12,7 +12,7 @@ use crate::constants::{
     BURN_ENTRY_POINT_NAME, CONFIGURE_MINTER_ENTRY_POINT_NAME, DECIMALS_ENTRY_POINT_NAME,
     DECREASE_ALLOWANCE_ENTRY_POINT_NAME, INCREASE_ALLOWANCE_ENTRY_POINT_NAME,
     INIT_ENTRY_POINT_NAME, IS_BLACKLISTED_ENTRY_POINT_NAME, IS_MINTER_ENTRY_POINT_NAME,
-    IS_PAUSED_ENTRY_POINT_NAME, MASTER_MINTER_ENTRY_POINT_NAME, MINTER,
+    IS_PAUSED_ENTRY_POINT_NAME, KEY, MASTER_MINTER_ENTRY_POINT_NAME, MINTER,
     MINTER_ALLOWANCE_ENTRY_POINT_NAME, MINTER_ALLOWED, MINT_ENTRY_POINT_NAME,
     NAME_ENTRY_POINT_NAME, NEW, OWNER, OWNER_ENTRY_POINT_NAME, PAUSER_ENTRY_POINT_NAME,
     PAUSE_ENTRY_POINT_NAME, RECIPIENT, REMOVE_MINTER_ENTRY_POINT_NAME, SPENDER,
@@ -334,7 +334,7 @@ pub fn is_minter() -> EntryPoint {
 pub fn is_blacklisted() -> EntryPoint {
     EntryPoint::new(
         String::from(IS_BLACKLISTED_ENTRY_POINT_NAME),
-        vec![Parameter::new(ADDRESS, AccountHash::cl_type())],
+        vec![Parameter::new(KEY, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -344,7 +344,7 @@ pub fn is_blacklisted() -> EntryPoint {
 pub fn blacklist() -> EntryPoint {
     EntryPoint::new(
         String::from(BLACKLIST_ENTRY_POINT_NAME),
-        vec![Parameter::new(ADDRESS, AccountHash::cl_type())],
+        vec![Parameter::new(KEY, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -354,7 +354,7 @@ pub fn blacklist() -> EntryPoint {
 pub fn un_blacklist() -> EntryPoint {
     EntryPoint::new(
         String::from(UN_BLACKLIST_ENTRY_POINT_NAME),
-        vec![Parameter::new(ADDRESS, AccountHash::cl_type())],
+        vec![Parameter::new(KEY, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

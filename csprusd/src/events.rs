@@ -48,14 +48,13 @@ pub struct NewPauser {
 
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct Blacklisted {
-    pub account: PublicKey,
+    pub key: Key,
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct UnBlacklisted {
-    pub account: PublicKey,
+    pub key: Key,
 }
-
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct BlacklisterChanged {
     pub new_blacklister: PublicKey,

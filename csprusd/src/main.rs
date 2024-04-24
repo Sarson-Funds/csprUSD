@@ -14,10 +14,7 @@ mod events;
 mod minters;
 mod utils;
 
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::string::{String, ToString};
 
 use allowances::{get_allowances_uref, read_allowance_from, write_allowance_to};
 use balances::{get_balances_uref, read_balance_from, transfer_balance, write_balance_to};
@@ -35,10 +32,11 @@ use casper_types::{
 };
 
 use constants::{
-    ADDRESS, ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED_DICT, BLACKLISTED_LIST, BLACKLISTER,
+    ADDRESS, ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED_ADDRESSES_COUNT, BLACKLISTER,
     CONTRACT_ACCESS, CONTRACT_HASH, CONTRACT_PACKAGE_HASH, CONTRACT_VERSION, CURRENCY, DECIMALS,
-    INIT_ENTRY_POINT_NAME, IS_PAUSED, KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME,
-    NEW, OWNER, PAUSER, RECIPIENT, SPENDER, SYMBOL, TOTAL_SUPPLY,
+    DICT_BLACKLISTED_ADDR_TO_INDEX, DICT_INDEX_TO_BLACKLISTED_ADDR, INIT_ENTRY_POINT_NAME,
+    IS_PAUSED, KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME, NEW, OWNER, PAUSER,
+    RECIPIENT, SPENDER, SYMBOL, TOTAL_SUPPLY,
 };
 pub use error::CsprUSDError;
 use events::{
@@ -54,7 +52,7 @@ use utils::{
 use assertion_utils::{
     only_blacklister, only_master_minter, only_minters, only_owner, only_pauser, when_not_paused,
 };
-use blacklisting::{blacklist_pubkey, is_blacklisted_util, un_blacklist_address};
+use blacklisting::{blacklist_key, is_blacklisted_util, un_blacklist_address};
 use minters::{
     add_minter, is_minter_util, read_minter_allowed, remove_minter_util, set_minter_allowed,
     update_minter_allowance,
@@ -152,24 +150,20 @@ pub extern "C" fn is_blacklisted() {
 pub extern "C" fn blacklist() {
     only_blacklister();
 
-    let pubkey_to_blacklist: PublicKey = runtime::get_named_arg(KEY);
-    blacklist_pubkey(pubkey_to_blacklist.clone());
+    let key: Key = runtime::get_named_arg(KEY);
+    blacklist_key(key);
 
-    events::emit_event(Event::Blacklisted(Blacklisted {
-        account: pubkey_to_blacklist,
-    }));
+    events::emit_event(Event::Blacklisted(Blacklisted { key }));
 }
 
 #[no_mangle]
 pub extern "C" fn un_blacklist() {
     only_blacklister();
 
-    let address_to_un_blacklist: PublicKey = runtime::get_named_arg(KEY);
-    un_blacklist_address(address_to_un_blacklist.clone());
+    let key: Key = runtime::get_named_arg(KEY);
+    un_blacklist_address(key);
 
-    events::emit_event(Event::UnBlacklisted(UnBlacklisted {
-        account: address_to_un_blacklist,
-    }));
+    events::emit_event(Event::UnBlacklisted(UnBlacklisted { key }));
 }
 
 #[no_mangle]
@@ -514,8 +508,9 @@ pub extern "C" fn init() {
     storage::new_dictionary(MINTER_ALLOWED)
         .unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
 
-    // BLACKLISTED_DICT - used for O(1) lookup
-    storage::new_dictionary(BLACKLISTED_DICT)
+    storage::new_dictionary(DICT_INDEX_TO_BLACKLISTED_ADDR)
+        .unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
+    storage::new_dictionary(DICT_BLACKLISTED_ADDR_TO_INDEX)
         .unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
 
     let master_minter: Key = runtime::get_named_arg(MASTER_MINTER);
@@ -558,11 +553,9 @@ pub fn install_contract() {
         storage::new_uref(U256::zero()).into(),
     );
 
-    // BLACKLISTED_LIST - used for reading list of blacklisted accounts
-    let blacklisted_init_value: Vec<PublicKey> = Vec::new();
     named_keys.insert(
-        BLACKLISTED_LIST.to_string(),
-        storage::new_uref(blacklisted_init_value).into(),
+        BLACKLISTED_ADDRESSES_COUNT.to_string(),
+        storage::new_uref(1u32).into(),
     );
 
     let entry_points = generate_entry_points();

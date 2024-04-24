@@ -61,6 +61,10 @@ pub enum CsprUSDError {
     CannotBurnZeroAmount = 65015,
     /// An account can't burn more than its balance
     BurnExceedsBalance = 65016,
+    /// Key is already blacklisted
+    AlreadyBlacklisted = 65018,
+    /// Key is not blacklisted
+    NotBlacklisted = 65019,
 }
 
 impl From<CsprUSDError> for ApiError {

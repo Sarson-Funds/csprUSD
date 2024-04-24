@@ -1362,7 +1362,6 @@ dependencies = [
 name = "tests"
 version = "1.0.0"
 dependencies = [
- "base64 0.20.0",
  "casper-engine-test-support",
  "casper-execution-engine",
  "casper-types",

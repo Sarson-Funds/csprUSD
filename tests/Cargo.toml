@@ -9,10 +9,7 @@ casper-types = "2.0.0"
 casper-engine-test-support = "4.0.0"
 casper-execution-engine = "4.0.0"
 once_cell = "1.16.0"
-
-# TODO: remove. Used only to reproduce dict key generating from test to access elements of global state with casper-client
 hex = { version = "0.4.3", default-features = false }
-base64 = { version = "0.20.0", default-features = false, features = ["alloc"] }
 
 [lib]
 name = "tests"
