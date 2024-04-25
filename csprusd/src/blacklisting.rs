@@ -22,10 +22,10 @@ use casper_contract::{
 /// String -> String
 
 pub(crate) fn is_blacklisted_util(key: Key) -> bool {
-    let atoi: URef = get_uref(DICT_BLACKLISTED_ADDR_TO_INDEX);
+    let dict_atoi: URef = get_uref(DICT_BLACKLISTED_ADDR_TO_INDEX);
     let key_blake: String = hex::encode(runtime::blake2b(key.to_bytes().unwrap_or_revert()));
 
-    let id: Option<u32> = storage::dictionary_get(atoi, &key_blake).unwrap_or_revert();
+    let id: Option<u32> = storage::dictionary_get(dict_atoi, &key_blake).unwrap_or_revert();
     if let Some(id) = id {
         return id != 0;
     }
@@ -44,21 +44,20 @@ pub(crate) fn blacklist_key(key: Key) {
         }
     }
 
-    let mut blacklist_count: u32 = read_from(BLACKLISTED_ADDRESSES_COUNT);
+    let blacklist_count: u32 = read_from(BLACKLISTED_ADDRESSES_COUNT);
+    let new_index: u32 = blacklist_count + 1;
 
     // insert into BLACKLISTED_ADDR_TO_INDEX
-    storage::dictionary_put(dict_atoi, &key_blake, blacklist_count);
+    storage::dictionary_put(dict_atoi, &key_blake, new_index);
 
     // insert into INDEX_TO_BLACKLISTED_ADDR
     let dict_itoa = get_uref(DICT_INDEX_TO_BLACKLISTED_ADDR);
-    let key_str: String = hex::encode(key.to_bytes().unwrap_or_revert());
-    let blacklist_count_str = blacklist_count.to_string();
-    storage::dictionary_put(dict_itoa, &blacklist_count_str, key_str);
+    let new_index_str = new_index.to_string();
+    storage::dictionary_put(dict_itoa, &new_index_str, key);
 
     // increment BLACKLISTED_ADDRESSES_COUNT
-    blacklist_count += 1;
     let uref = get_uref(BLACKLISTED_ADDRESSES_COUNT);
-    storage::write(uref, blacklist_count);
+    storage::write(uref, new_index);
 }
 
 pub(crate) fn un_blacklist_address(key: Key) {
@@ -75,16 +74,15 @@ pub(crate) fn un_blacklist_address(key: Key) {
             revert(CsprUSDError::NotBlacklisted);
         }
         storage::dictionary_put(dict_atoi, &key_blake, 0);
-        if id < blacklist_count - 1 {
-            // not address with last index
-            let last_index: u32 = blacklist_count - 1;
-
+        if id < blacklist_count {
+            // unblacklisted address is not the address with last index
             let dict_itoa: URef = get_uref(DICT_INDEX_TO_BLACKLISTED_ADDR);
-            let last_addr: String = storage::dictionary_get(dict_itoa, &last_index.to_string())
+            let last_addr: Key = storage::dictionary_get(dict_itoa, &blacklist_count.to_string())
                 .unwrap_or_revert()
                 .unwrap_or_revert();
-            storage::dictionary_put(dict_itoa, &id.to_string(), last_addr.clone());
-            let last_addr_blake = hex::encode(runtime::blake2b(hex::decode(last_addr).unwrap()));
+            storage::dictionary_put(dict_itoa, &id.to_string(), last_addr);
+            let last_addr_blake =
+                hex::encode(runtime::blake2b(last_addr.to_bytes().unwrap_or_revert()));
             storage::dictionary_put(dict_atoi, &last_addr_blake, id);
         }
     } else {

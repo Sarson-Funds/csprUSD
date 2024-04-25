@@ -13,8 +13,7 @@ use crate::utility::{
 use casper_engine_test_support::{ExecuteRequestBuilder, WasmTestBuilder, DEFAULT_ACCOUNT_ADDR};
 
 use casper_types::{
-    account::AccountHash, bytesrepr::ToBytes, runtime_args, ApiError, ContractHash, Key,
-    RuntimeArgs, U256,
+    account::AccountHash, runtime_args, ApiError, ContractHash, Key, RuntimeArgs, U256,
 };
 
 use casper_execution_engine::{
@@ -65,15 +64,15 @@ fn test_blacklisting_keeps_track_correctly() {
     whitelist(csprusd_token, k8, &mut builder, false); // 2 3 4 5 6 7
     whitelist(csprusd_token, k9, &mut builder, true); // 2 3 4 5 6 7
 
-    let keys = get_blacklist(&mut builder, csprusd_token);
+    let keys: Vec<Key> = get_blacklist(&mut builder, csprusd_token);
 
     assert_eq!(keys.len(), 6);
-    assert!(keys.contains(&hex::encode(k2.to_bytes().unwrap())));
-    assert!(keys.contains(&hex::encode(k3.to_bytes().unwrap())));
-    assert!(keys.contains(&hex::encode(k4.to_bytes().unwrap())));
-    assert!(keys.contains(&hex::encode(k5.to_bytes().unwrap())));
-    assert!(keys.contains(&hex::encode(k6.to_bytes().unwrap())));
-    assert!(keys.contains(&hex::encode(k7.to_bytes().unwrap())));
+    assert!(keys.contains(&k2));
+    assert!(keys.contains(&k3));
+    assert!(keys.contains(&k4));
+    assert!(keys.contains(&k5));
+    assert!(keys.contains(&k6));
+    assert!(keys.contains(&k7));
 }
 
 fn blacklist(
@@ -275,12 +274,9 @@ fn test_blacklisting_prevents_minting() {
         .commit();
 
     // get blacklist from contract
-    let blacklist: Vec<String> = get_blacklist(&mut builder, csprusd_token);
+    let blacklist: Vec<Key> = get_blacklist(&mut builder, csprusd_token);
 
-    assert_eq!(
-        hex::decode(blacklist.get(0).unwrap()).unwrap(),
-        account_1_key.to_bytes().unwrap()
-    );
+    assert_eq!(blacklist.get(0).unwrap(), &account_1_key);
 
     // update blacklister
     let update_blacklister_to_acc_2 = ExecuteRequestBuilder::contract_call_by_hash(
@@ -299,7 +295,7 @@ fn test_blacklisting_prevents_minting() {
 fn get_blacklist(
     builder: &mut WasmTestBuilder<InMemoryGlobalState>,
     contract: ContractHash,
-) -> Vec<String> {
+) -> Vec<Key> {
     let blacklisted_count: u32 = builder.get_value(contract, BLACKLISTED_ADDRESSES_COUNT);
     let dict_uref = *builder
         .query(None, contract.into(), &[])
@@ -314,12 +310,12 @@ fn get_blacklist(
 
     let mut res = Vec::new();
 
-    for i in 1..blacklisted_count {
+    for i in 1..=blacklisted_count {
         let a = builder
             .query_dictionary_item(None, dict_uref, &i.to_string())
             .unwrap();
         let b = a.as_cl_value().unwrap();
-        let c: String = b.clone().into_t().unwrap();
+        let c: Key = b.clone().into_t().unwrap();
         res.push(c);
     }
     res

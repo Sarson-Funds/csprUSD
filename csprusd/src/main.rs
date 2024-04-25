@@ -555,7 +555,7 @@ pub fn install_contract() {
 
     named_keys.insert(
         BLACKLISTED_ADDRESSES_COUNT.to_string(),
-        storage::new_uref(1u32).into(),
+        storage::new_uref(0u32).into(),
     );
 
     let entry_points = generate_entry_points();
