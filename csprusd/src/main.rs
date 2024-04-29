@@ -35,8 +35,8 @@ use constants::{
     ADDRESS, ALLOWANCES, AMOUNT, BALANCES, BLACKLISTED_ADDRESSES_COUNT, BLACKLISTER,
     CONTRACT_ACCESS, CONTRACT_HASH, CONTRACT_PACKAGE_HASH, CONTRACT_VERSION, CURRENCY, DECIMALS,
     DICT_BLACKLISTED_ADDR_TO_INDEX, DICT_INDEX_TO_BLACKLISTED_ADDR, INIT_ENTRY_POINT_NAME,
-    IS_PAUSED, KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME, NEW, OWNER, PAUSER,
-    RECIPIENT, SPENDER, SYMBOL, TOTAL_SUPPLY,
+    IS_PAUSED, KEY, MASTER_MINTER, MINTER, MINTERS, MINTER_ALLOWED, NAME, NEW, OWNER, PACKAGE_HASH,
+    PAUSER, RECIPIENT, SPENDER, SYMBOL, TOTAL_SUPPLY,
 };
 pub use error::CsprUSDError;
 use events::{
@@ -55,7 +55,6 @@ use assertion_utils::{
 use blacklisting::{blacklist_key, is_blacklisted_util, un_blacklist_address};
 use minters::{
     add_minter, is_minter_util, read_minter_allowed, remove_minter_util, set_minter_allowed,
-    update_minter_allowance,
 };
 
 #[no_mangle]
@@ -211,7 +210,7 @@ pub extern "C" fn configure_minter() {
 pub extern "C" fn remove_minter() {
     only_master_minter();
 
-    let minter = runtime::get_named_arg(MINTER);
+    let minter: Key = runtime::get_named_arg(MINTER);
     remove_minter_util(minter);
     set_minter_allowed(minter, U256::zero());
     events::emit_event(Event::MinterRemoved(MinterRemoved { minter }));
@@ -343,6 +342,9 @@ pub extern "C" fn transfer() {
     }
 
     let amount: U256 = runtime::get_named_arg(AMOUNT);
+    if amount.is_zero() {
+        revert(CsprUSDError::CannotTransferZeroAmount);
+    }
 
     transfer_balance(sender, recipient, amount).unwrap_or_revert();
     events::emit_event(Event::Transfer(Transfer {
@@ -370,19 +372,18 @@ pub extern "C" fn transfer_from() {
     }
 
     let amount: U256 = runtime::get_named_arg(AMOUNT);
+    if amount.is_zero() {
+        revert(CsprUSDError::CannotTransferZeroAmount);
+    }
 
     let allowances_uref = get_allowances_uref();
     let spender_allowance: U256 = read_allowance_from(allowances_uref, owner, spender);
-    if spender_allowance < amount {
-        revert(CsprUSDError::InsufficientAllowance);
-    }
-
-    transfer_balance(owner, recipient, amount).unwrap_or_revert();
-
     let new_spender_allowance = spender_allowance
         .checked_sub(amount)
         .ok_or(CsprUSDError::InsufficientAllowance)
         .unwrap_or_revert();
+
+    transfer_balance(owner, recipient, amount).unwrap_or_revert();
     write_allowance_to(allowances_uref, owner, spender, new_spender_allowance);
 
     events::emit_event(Event::TransferFrom(TransferFrom {
@@ -432,7 +433,7 @@ pub extern "C" fn mint() {
 
     // update minter allowance
     let updated_allowance = minter_allowance.checked_sub(amount).unwrap_or_revert();
-    update_minter_allowance(minter, updated_allowance);
+    set_minter_allowed(minter, updated_allowance);
 
     let total_supply_uref = get_total_supply_uref();
     let new_total_supply = {
@@ -501,6 +502,9 @@ pub extern "C" fn burn() {
 
 #[no_mangle]
 pub extern "C" fn init() {
+    let package_hash = runtime::get_named_arg::<Key>(PACKAGE_HASH);
+    runtime::put_key(PACKAGE_HASH, package_hash);
+
     storage::new_dictionary(ALLOWANCES)
         .unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
     storage::new_dictionary(BALANCES).unwrap_or_revert_with(CsprUSDError::FailedToCreateDictionary);
@@ -518,9 +522,6 @@ pub extern "C" fn init() {
 
     init_events();
 }
-
-#[no_mangle]
-pub extern "C" fn migrate() {}
 
 pub fn install_contract() {
     let name: String = runtime::get_named_arg(NAME);
@@ -566,15 +567,14 @@ pub fn install_contract() {
         Some(CONTRACT_PACKAGE_HASH.to_string()),
         Some(CONTRACT_ACCESS.to_string()),
     );
-    let package_hash = runtime::get_key(CONTRACT_PACKAGE_HASH).unwrap_or_revert();
 
     // Store contract_hash and contract_version under the keys CONTRACT_NAME and CONTRACT_VERSION
     runtime::put_key(CONTRACT_HASH, contract_hash.into());
-    runtime::put_key(CONTRACT_PACKAGE_HASH, package_hash);
     runtime::put_key(CONTRACT_VERSION, storage::new_uref(contract_version).into());
 
     // Call contract to initialize it
-    let init_args = runtime_args! { MASTER_MINTER => master_minter};
+    let package_hash = runtime::get_key(CONTRACT_PACKAGE_HASH).unwrap_or_revert();
+    let init_args = runtime_args! { MASTER_MINTER => master_minter, PACKAGE_HASH => package_hash};
     runtime::call_contract::<()>(contract_hash, INIT_ENTRY_POINT_NAME, init_args);
 }
 

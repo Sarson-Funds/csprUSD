@@ -96,6 +96,7 @@ pub const METHOD_UNPAUSE: &str = "unpause_contract";
 pub const METHOD_UPDATE_PAUSER: &str = "update_pauser";
 pub const CONTRACT_PAUSED_ERROR_CODE: u16 = 65000;
 pub const NON_PAUSER_ERROR_CODE: u16 = 65001;
+pub const CANNOT_TRANSFER_ZERO_AMOUNT: u16 = 65017;
 
 pub const ARG_CURRENCY: &str = "currency";
 pub const TOKEN_CURRENCY: &str = "SOME_CCY";

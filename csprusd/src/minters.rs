@@ -30,13 +30,6 @@ pub(crate) fn read_minter_allowed(minter: Key) -> U256 {
         .unwrap_or_default()
 }
 
-pub(crate) fn update_minter_allowance(minter: Key, updated_allowance: U256) {
-    let dict_seed = get_uref(MINTER_ALLOWED);
-    let dict_key = hex::encode(runtime::blake2b(minter.to_bytes().unwrap_or_revert()));
-
-    storage::dictionary_put(dict_seed, &dict_key, updated_allowance);
-}
-
 pub(crate) fn set_minter_allowed(minter: Key, minter_allowed_amount: U256) {
     let dict_seed = get_uref(MINTER_ALLOWED);
     let dict_key = hex::encode(runtime::blake2b(minter.to_bytes().unwrap_or_revert()));

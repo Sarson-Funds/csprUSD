@@ -281,7 +281,7 @@ pub fn update_pauser() -> EntryPoint {
 pub fn transfer_ownership() -> EntryPoint {
     EntryPoint::new(
         String::from(TRANSFER_OWNERSHIP_ENTRY_POINT_NAME),
-        vec![Parameter::new(OWNER, AccountHash::cl_type())],
+        vec![Parameter::new(NEW, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -292,7 +292,7 @@ pub fn configure_minter() -> EntryPoint {
     EntryPoint::new(
         String::from(CONFIGURE_MINTER_ENTRY_POINT_NAME),
         vec![
-            Parameter::new(MINTER, AccountHash::cl_type()),
+            Parameter::new(MINTER, Key::cl_type()),
             Parameter::new(MINTER_ALLOWED, U256::cl_type()),
         ],
         CLType::Unit,
@@ -304,7 +304,7 @@ pub fn configure_minter() -> EntryPoint {
 pub fn remove_minter() -> EntryPoint {
     EntryPoint::new(
         String::from(REMOVE_MINTER_ENTRY_POINT_NAME),
-        vec![Parameter::new(MINTER, AccountHash::cl_type())],
+        vec![Parameter::new(MINTER, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -314,7 +314,7 @@ pub fn remove_minter() -> EntryPoint {
 pub fn minter_allowance() -> EntryPoint {
     EntryPoint::new(
         String::from(MINTER_ALLOWANCE_ENTRY_POINT_NAME),
-        vec![Parameter::new(MINTER, AccountHash::cl_type())],
+        vec![Parameter::new(MINTER, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -324,7 +324,7 @@ pub fn minter_allowance() -> EntryPoint {
 pub fn is_minter() -> EntryPoint {
     EntryPoint::new(
         String::from(IS_MINTER_ENTRY_POINT_NAME),
-        vec![Parameter::new(MINTER, AccountHash::cl_type())],
+        vec![Parameter::new(KEY, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -374,7 +374,7 @@ pub fn update_blacklister() -> EntryPoint {
 pub fn update_master_minter() -> EntryPoint {
     EntryPoint::new(
         String::from(UPDATE_MASTER_MINTER_ENTRY_POINT_NAME),
-        vec![Parameter::new(ADDRESS, AccountHash::cl_type())],
+        vec![Parameter::new(NEW, Key::cl_type())],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -387,6 +387,7 @@ pub fn generate_entry_points() -> EntryPoints {
     entry_points.add_entry_point(init());
     entry_points.add_entry_point(name());
     entry_points.add_entry_point(symbol());
+    entry_points.add_entry_point(decimals());
     entry_points.add_entry_point(pauser());
     entry_points.add_entry_point(is_paused());
     entry_points.add_entry_point(owner());

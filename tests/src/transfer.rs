@@ -4,10 +4,10 @@ use casper_types::{runtime_args, ApiError, ContractHash, Key, RuntimeArgs, U256}
 use crate::utility::{
     constants::{
         ACCOUNT_1_ADDR, ACCOUNT_2_ADDR, ALLOWANCE_AMOUNT_1, AMOUNT, ARG_AMOUNT, ARG_OWNER,
-        ARG_RECIPIENT, ARG_SPENDER, ARG_TOKEN_CONTRACT, CONFIGURE_MINTER_ENTRY_POINT_NAME,
-        ERROR_INSUFFICIENT_BALANCE, METHOD_APPROVE, METHOD_FROM_AS_STORED_CONTRACT, METHOD_MINT,
-        METHOD_TRANSFER, METHOD_TRANSFER_FROM, MINTER, MINTER_ALLOWED, RECIPIENT,
-        TOKEN_TOTAL_SUPPLY, TOTAL_SUPPLY_KEY, TRANSFER_AMOUNT_1,
+        ARG_RECIPIENT, ARG_SPENDER, ARG_TOKEN_CONTRACT, CANNOT_TRANSFER_ZERO_AMOUNT,
+        CONFIGURE_MINTER_ENTRY_POINT_NAME, ERROR_INSUFFICIENT_BALANCE, METHOD_APPROVE,
+        METHOD_FROM_AS_STORED_CONTRACT, METHOD_MINT, METHOD_TRANSFER, METHOD_TRANSFER_FROM, MINTER,
+        MINTER_ALLOWED, RECIPIENT, TOKEN_TOTAL_SUPPLY, TOTAL_SUPPLY_KEY, TRANSFER_AMOUNT_1,
     },
     installer_request_builders::{
         csprusd_check_allowance_of, csprusd_check_balance_of, make_csprusd_approve_request,
@@ -20,8 +20,6 @@ use casper_execution_engine::{
     storage::global_state::in_memory::InMemoryGlobalState,
 };
 
-// TODO: rework. First problem I found is that now DEFAULT_ACCOUNT_ADDR isn't initialized with
-// TOTAL_SUPPLY=1,000,000,000
 #[test]
 fn should_transfer_full_owned_amount() {
     let (mut builder, TestContext { csprusd_token, .. }) = setup();
@@ -412,7 +410,7 @@ fn should_not_be_able_to_own_transfer_from() {
 }
 
 #[test]
-fn should_verify_zero_amount_transfer_is_noop() {
+fn should_verify_zero_amount_transfer_is_rejected() {
     let (mut builder, TestContext { csprusd_token, .. }) = setup();
 
     let sender = Key::Account(*DEFAULT_ACCOUNT_ADDR);
@@ -420,27 +418,23 @@ fn should_verify_zero_amount_transfer_is_noop() {
 
     let transfer_amount = U256::zero();
 
-    let sender_balance_before = csprusd_check_balance_of(&mut builder, &csprusd_token, sender);
-    let recipient_balance_before =
-        csprusd_check_balance_of(&mut builder, &csprusd_token, recipient);
-
     let token_transfer_request_1 =
         make_csprusd_transfer_request(sender, &csprusd_token, recipient, transfer_amount);
 
-    builder
-        .exec(token_transfer_request_1)
-        .expect_success()
-        .commit();
+    builder.exec(token_transfer_request_1).commit();
 
-    let sender_balance_after = csprusd_check_balance_of(&mut builder, &csprusd_token, sender);
-    assert_eq!(sender_balance_before, sender_balance_after);
-
-    let recipient_balance_after = csprusd_check_balance_of(&mut builder, &csprusd_token, recipient);
-    assert_eq!(recipient_balance_before, recipient_balance_after);
+    let error = builder
+        .get_error()
+        .expect("Transfer should be rejected because transferring 0 amount");
+    assert!(
+        matches!(error, CoreError::Exec(ExecError::Revert(ApiError::User(user_error))) if user_error == CANNOT_TRANSFER_ZERO_AMOUNT),
+        "{:?}",
+        error
+    );
 }
 
 #[test]
-fn should_verify_zero_amount_transfer_from_is_noop() {
+fn should_verify_zero_amount_transfer_from_is_rejected() {
     let (mut builder, TestContext { csprusd_token, .. }) = setup();
 
     let owner = Key::Account(*DEFAULT_ACCOUNT_ADDR);
@@ -454,12 +448,6 @@ fn should_verify_zero_amount_transfer_from_is_noop() {
         make_csprusd_approve_request(owner, &csprusd_token, spender, allowance_amount);
 
     builder.exec(approve_request).expect_success().commit();
-
-    let spender_allowance_before = csprusd_check_allowance_of(&mut builder, owner, spender);
-
-    let owner_balance_before = csprusd_check_balance_of(&mut builder, &csprusd_token, owner);
-    let recipient_balance_before =
-        csprusd_check_balance_of(&mut builder, &csprusd_token, recipient);
 
     let transfer_from_request = {
         let csprusd_transfer_from_args = runtime_args! {
@@ -476,19 +464,16 @@ fn should_verify_zero_amount_transfer_from_is_noop() {
         .build()
     };
 
-    builder
-        .exec(transfer_from_request)
-        .expect_success()
-        .commit();
+    builder.exec(transfer_from_request).commit();
 
-    let owner_balance_after = csprusd_check_balance_of(&mut builder, &csprusd_token, owner);
-    assert_eq!(owner_balance_before, owner_balance_after);
-
-    let recipient_balance_after = csprusd_check_balance_of(&mut builder, &csprusd_token, recipient);
-    assert_eq!(recipient_balance_before, recipient_balance_after);
-
-    let spender_allowance_after = csprusd_check_allowance_of(&mut builder, owner, spender);
-    assert_eq!(spender_allowance_after, spender_allowance_before);
+    let error = builder
+        .get_error()
+        .expect("Transfer should be rejected because transferring 0 amount");
+    assert!(
+        matches!(error, CoreError::Exec(ExecError::Revert(ApiError::User(user_error))) if user_error == CANNOT_TRANSFER_ZERO_AMOUNT),
+        "{:?}",
+        error
+    );
 }
 
 #[test]

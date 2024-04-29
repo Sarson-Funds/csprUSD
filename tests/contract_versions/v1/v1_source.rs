@@ -524,9 +524,6 @@ pub extern "C" fn init() {
     init_events();
 }
 
-#[no_mangle]
-pub extern "C" fn migrate() {}
-
 pub fn install_contract() {
     let name: String = runtime::get_named_arg(NAME);
     let symbol: String = runtime::get_named_arg(SYMBOL);

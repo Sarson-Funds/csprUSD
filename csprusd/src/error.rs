@@ -51,16 +51,18 @@ pub enum CsprUSDError {
     ExceedsMintAllowance = 65007,
     /// Error while calling into Casper for creating dictionary
     FailedToCreateDictionary = 65011,
-    /// Minting negative amounts is not allowed
+    /// Minting zero amounts is not allowed
     CannotMintZeroAmount = 65012,
     /// Operation disallowed because account is not the master minter
     NotMasterMinter = 65013,
     /// Operation disallowed because account is not the blacklister
     NotBlacklister = 65014,
-    /// One can only burn a positive amount of tokens
+    /// One can only burn a strictly positive amount of tokens
     CannotBurnZeroAmount = 65015,
     /// An account can't burn more than its balance
     BurnExceedsBalance = 65016,
+    /// One can only transfer a positive number of tokens
+    CannotTransferZeroAmount = 65017,
     /// Key is already blacklisted
     AlreadyBlacklisted = 65018,
     /// Key is not blacklisted

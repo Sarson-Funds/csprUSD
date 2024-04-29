@@ -55,6 +55,7 @@ pub struct Blacklisted {
 pub struct UnBlacklisted {
     pub key: Key,
 }
+
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct BlacklisterChanged {
     pub new_blacklister: PublicKey,
