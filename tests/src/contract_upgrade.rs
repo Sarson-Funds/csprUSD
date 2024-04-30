@@ -3,14 +3,19 @@ use casper_engine_test_support::{
     MINIMUM_ACCOUNT_CREATION_BALANCE, PRODUCTION_RUN_GENESIS_REQUEST,
 };
 use casper_types::{
-    runtime_args, system::mint, ApiError, ContractHash, Key, PublicKey, RuntimeArgs, U256,
+    runtime_args, system::mint, ApiError, ContractHash, ContractPackageHash, Key, PublicKey,
+    RuntimeArgs, U256,
 };
 
-use crate::utility::constants::{
-    ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, AMOUNT, ARG_CURRENCY, ARG_DECIMALS,
-    ARG_MASTER_MINTER, ARG_NAME, ARG_SYMBOL, BLACKLISTER, CONFIGURE_MINTER_ENTRY_POINT_NAME,
-    CONTRACT_HASH, ERROR_EXCEEDS_MINT_ALLOWANCE, METHOD_MINT, MINTER, MINTER_ALLOWED, OWNER,
-    PAUSER, RECIPIENT, TOKEN_CURRENCY, TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL,
+use crate::utility::{
+    constants::{
+        ACCOUNT_1_ADDR, ACCOUNT_1_PUBLIC_KEY, ACCOUNT_2_ADDR, AMOUNT, ARG_CURRENCY, ARG_DECIMALS,
+        ARG_MASTER_MINTER, ARG_NAME, ARG_SYMBOL, BLACKLISTER, CONFIGURE_MINTER_ENTRY_POINT_NAME,
+        CONTRACT_HASH, CSPR_USD_TEST_CONTRACT_WASM, ERROR_EXCEEDS_MINT_ALLOWANCE, METHOD_MINT,
+        MINTER, MINTER_ALLOWED, OWNER, PACKAGE_HASH, PAUSER, RECIPIENT, TOKEN_CURRENCY,
+        TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL,
+    },
+    installer_request_builders::csprusd_check_total_supply,
 };
 
 use casper_execution_engine::core::{
@@ -66,6 +71,11 @@ fn test_contract_upgrades() {
         .map(ContractHash::new)
         .expect("should have contract hash");
 
+    println!(
+        "Hash of v0 of the contract: {}",
+        csprusd_token.to_formatted_string()
+    );
+
     let id: Option<u64> = None;
     let transfer_1_args = runtime_args! {
         mint::ARG_TARGET => *ACCOUNT_1_ADDR,
@@ -104,6 +114,18 @@ fn test_contract_upgrades() {
     .build();
     builder.exec(mint1_request).expect_success().commit();
 
+    let install_request_2 = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        CSPR_USD_TEST_CONTRACT_WASM,
+        RuntimeArgs::default(),
+    )
+    .build();
+
+    builder.exec(install_request_2).expect_success().commit();
+
+    let total_supply = csprusd_check_total_supply(&mut builder, &csprusd_token);
+    assert_eq!(total_supply, U256::from(5));
+
     // upgrade contract to v1
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     let contract_v1_file: &str = "./../contract_versions/v1/csprusd.wasm"; // searches given file in: tests/wasm/
@@ -141,6 +163,8 @@ fn test_contract_upgrades() {
         .map(ContractHash::new)
         .expect("should have contract hash");
 
+    println!("Hash of v1:{}", csprusd_token1.to_formatted_string());
+
     let blacklister: Key = builder.get_value(csprusd_token1, BLACKLISTER);
 
     // proof that contract was updated: there is data under "random_key"
@@ -150,19 +174,17 @@ fn test_contract_upgrades() {
     // proof that you can't change a named key if you also change its type
     assert_eq!(blacklister, account_1_key);
 
-    // prove that new version still has access to the same data: minting allowance changed, etc
-    //  do this by methods, not only by just simply querying global state e.g.: who is owner, etc?
-    //   e.g.: try minting some money which exceeds the minting allowance left from operations in v0
-    // let minter_allowed = builder.query(
-    //     None,
-    //     Key::Hash(csprusd_token1.to_bytes().unwrap().try_into().unwrap()),
-    //     &["minter_allowed".to_string()],
-    // );
-    // println!("minter allowed uref: {:?}", minter_allowed);
+    let package_hash = account
+        .named_keys()
+        .get(PACKAGE_HASH)
+        .and_then(|key| key.into_hash())
+        .map(ContractPackageHash::new)
+        .expect("should have package hash");
 
-    let mint1_request = ExecuteRequestBuilder::contract_call_by_hash(
+    let mint1_request = ExecuteRequestBuilder::versioned_contract_call_by_hash(
         *ACCOUNT_1_ADDR,
-        csprusd_token,
+        package_hash,
+        None,
         METHOD_MINT,
         runtime_args! {RECIPIENT => account_1_key, AMOUNT => U256::from(6)},
     )
@@ -176,5 +198,19 @@ fn test_contract_upgrades() {
         error
     );
 
-    // TODO: disable old version and prove that it no longer works
+    let mint1_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *ACCOUNT_1_ADDR,
+        csprusd_token1,
+        METHOD_MINT,
+        runtime_args! {RECIPIENT => account_1_key, AMOUNT => U256::from(6)},
+    )
+    .build();
+    builder.exec(mint1_request).commit();
+
+    let error = builder.get_error().expect("should have error");
+    assert!(
+        matches!(error, CoreError::Exec(ExecError::Revert(ApiError::User(user_error))) if user_error == ERROR_EXCEEDS_MINT_ALLOWANCE),
+        "{:?}",
+        error
+    );
 }

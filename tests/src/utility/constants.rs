@@ -6,6 +6,7 @@ pub const CSPR_USD_TEST_CONTRACT_WASM: &str = "csprusd_test_contract.wasm";
 pub const NAME_KEY: &str = "name";
 pub const SYMBOL_KEY: &str = "symbol";
 pub const CONTRACT_HASH: &str = "csprUSD_contract_hash";
+pub const PACKAGE_HASH: &str = "csprUSD_contract_package_hash";
 pub const DECIMALS_KEY: &str = "decimals";
 pub const TOTAL_SUPPLY_KEY: &str = "total_supply";
 pub const BLACKLISTED_ADDRESSES_COUNT: &str = "blacklisted_addresses_index";
