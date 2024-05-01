@@ -3,8 +3,8 @@ use casper_engine_test_support::{
     MINIMUM_ACCOUNT_CREATION_BALANCE, PRODUCTION_RUN_GENESIS_REQUEST,
 };
 use casper_types::{
-    runtime_args, system::mint, ApiError, ContractHash, ContractPackageHash, Key, PublicKey,
-    RuntimeArgs, U256,
+    runtime_args, system::mint, ApiError, ContractHash, ContractPackageHash, ContractVersionKey,
+    Key, PublicKey, RuntimeArgs, U256,
 };
 
 use crate::utility::{
@@ -27,10 +27,9 @@ use casper_execution_engine::core::{
 ///     1. Old version of contract is inaccessible
 ///     2. New contract has same named-keys
 ///     3. New contract has access to the data left by previous contract
-///     4. What is named keys set shrinks/grows? How would this function?
 ///
 /// contract v0: blacklister is a Key::Account(AccountHash)
-/// contract v1: blacklister is a PublicKey
+/// contract v1: has new NamedKey "random_key" -> ACCOUNT_1_PUBLIC_KEY: PublicKey
 #[test]
 fn test_contract_upgrades() {
     let account_1_key: Key = Key::Account(*ACCOUNT_1_ADDR);
@@ -70,6 +69,17 @@ fn test_contract_upgrades() {
         .and_then(|key| key.into_hash())
         .map(ContractHash::new)
         .expect("should have contract hash");
+
+    let package_hash = account
+        .named_keys()
+        .get(PACKAGE_HASH)
+        .and_then(|key| key.into_hash())
+        .map(ContractPackageHash::new)
+        .expect("should have package hash");
+    println!(
+        "After installing v0, PackageHash={}",
+        package_hash.to_formatted_string()
+    );
 
     println!(
         "Hash of v0 of the contract: {}",
@@ -180,32 +190,38 @@ fn test_contract_upgrades() {
         .and_then(|key| key.into_hash())
         .map(ContractPackageHash::new)
         .expect("should have package hash");
+    println!(
+        "After installing v1, PackageHash={}",
+        package_hash.to_formatted_string()
+    );
 
-    let mint1_request = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+    let mint_v0_request = ExecuteRequestBuilder::versioned_contract_call_by_hash(
         *ACCOUNT_1_ADDR,
         package_hash,
-        None,
+        Some(1),
         METHOD_MINT,
         runtime_args! {RECIPIENT => account_1_key, AMOUNT => U256::from(6)},
     )
     .build();
-    builder.exec(mint1_request).commit();
+    builder.exec(mint_v0_request).commit();
 
     let error = builder.get_error().expect("should have error");
+    let contract_version_key = ContractVersionKey::new(1u32, 1u32);
     assert!(
-        matches!(error, CoreError::Exec(ExecError::Revert(ApiError::User(user_error))) if user_error == ERROR_EXCEEDS_MINT_ALLOWANCE),
+        matches!(error, CoreError::Exec(ExecError::InvalidContractVersion(cvk)) if cvk == contract_version_key),
         "{:?}",
         error
     );
 
-    let mint1_request = ExecuteRequestBuilder::contract_call_by_hash(
+    let mint_v1_request = ExecuteRequestBuilder::versioned_contract_call_by_hash(
         *ACCOUNT_1_ADDR,
-        csprusd_token1,
+        package_hash,
+        Some(2),
         METHOD_MINT,
         runtime_args! {RECIPIENT => account_1_key, AMOUNT => U256::from(6)},
     )
     .build();
-    builder.exec(mint1_request).commit();
+    builder.exec(mint_v1_request).commit();
 
     let error = builder.get_error().expect("should have error");
     assert!(
